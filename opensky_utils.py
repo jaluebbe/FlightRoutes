@@ -8,8 +8,18 @@ callsign_validator = re.compile(
 suffix_validator = re.compile("^[1-9]")
 
 # This mapping between icao24 and aircraft registration should be refreshed
-# frequently using prepare_aircraft_data.py .
-icao24_to_registration = json.load(open("icao24_to_registration.json"))
+# frequently using prepare_aircraft_data.py followed by
+# reload_icao24_to_registration() .
+icao24_to_registration = {}
+
+# Call this method to load an updated version of icao24_to_registration.json .
+def reload_icao24_to_registration():
+    _data = json.load(open("icao24_to_registration.json"))
+    icao24_to_registration.clear()
+    icao24_to_registration.update(_data)
+
+
+reload_icao24_to_registration()
 
 # checking if a position from an OpenSky Network state could be used for
 # flight route analysis and if the callsign is formatted as being an airline.
