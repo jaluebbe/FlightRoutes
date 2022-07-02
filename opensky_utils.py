@@ -1,5 +1,9 @@
 import re
 import json
+import redis
+import requests
+
+redis_connection = redis.Redis(decode_responses=True)
 
 # regexp checking for callsign similarity rules
 callsign_validator = re.compile(
@@ -19,7 +23,31 @@ def reload_icao24_to_registration():
     icao24_to_registration.update(_data)
 
 
+def update_icao24s_from_redis():
+    icao24_to_registration.update(redis_connection.hgetall("icao24s"))
+
+
+def dump_icao24_to_registration():
+    with open("icao24_to_registration.json", "w") as f:
+        json.dump(icao24_to_registration, f)
+
+
+def request_icao24_from_opensky(icao24: str):
+    if redis_connection.sismember("unknown_icao24s", icao24):
+        return
+    url = "https://opensky-network.org/api/metadata/aircraft/icao/"
+    response = requests.get(url + icao24)
+    if response.status_code == 200:
+        _data = response.json()
+        registration = "".join(_data["registration"].split("-"))
+        if registration != "":
+            redis_connection.hset("icao24s", icao24, registration)
+            return registration
+    redis_connection.sadd("unknown_icao24s", icao24)
+
+
 reload_icao24_to_registration()
+update_icao24s_from_redis()
 
 # checking if a position from an OpenSky Network state could be used for
 # flight route analysis and if the callsign is formatted as being an airline.
@@ -85,6 +113,8 @@ def validated_position(
         return None
     if use_registration:
         registration = icao24_to_registration.get(position["icao24"])
+        if registration is None:
+            registration = request_icao24_from_opensky(position["icao24"])
         if registration is not None:
             position["registration"] = registration
     return position
