@@ -47,7 +47,6 @@ def request_icao24_from_opensky(icao24: str):
 
 
 reload_icao24_to_registration()
-update_icao24s_from_redis()
 
 # checking if a position from an OpenSky Network state could be used for
 # flight route analysis and if the callsign is formatted as being an airline.
