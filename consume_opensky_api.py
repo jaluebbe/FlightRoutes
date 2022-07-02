@@ -7,7 +7,7 @@ import requests
 import logging
 
 from opensky_api import OpenSkyApi
-from opensky_utils import validated_position
+from opensky_utils import validated_position, update_icao24s_from_redis
 
 from config import *
 
@@ -29,14 +29,19 @@ class OpenSkyApiConsumer:
 
     def worker(self, interval=10):
         while True:
+            update_icao24s_from_redis()
             positions = {}
             t_start = arrow.utcnow()
-            self.logger.info("UTC {}".format(t_start.format("YYYY-MM-DD HH:mm:ss")))
+            self.logger.info(
+                "UTC {}".format(t_start.format("YYYY-MM-DD HH:mm:ss"))
+            )
             try:
                 _response = self.api.get_states()
                 if _response is None:
                     self.logger.warning("API response is None.")
-                    time.sleep(max((arrow.utcnow() - t_start).total_seconds(), 5))
+                    time.sleep(
+                        max((arrow.utcnow() - t_start).total_seconds(), 5)
+                    )
                     continue
                 else:
                     _all_states = _response.states
@@ -45,7 +50,9 @@ class OpenSkyApiConsumer:
                 self.logger.error("connection timeout.")
                 continue
             except IOError as e:
-                self.logger.exception("problem with OpenSky Network connection.")
+                self.logger.exception(
+                    "problem with OpenSky Network connection."
+                )
                 self.logger.info("Sleep for 60 seconds.")
                 time.sleep(60)
                 self.logger.info("...reconnecting to OpenSky Network.")
@@ -71,17 +78,26 @@ class OpenSkyApiConsumer:
             try:
                 self.redis_connection.set(
                     "opensky_positions",
-                    json.dumps({"positions": positions, "states_time": states_time}),
+                    json.dumps(
+                        {"positions": positions, "states_time": states_time}
+                    ),
                 )
-            except (redis.exceptions.TimeoutError, redis.exceptions.ConnectionError):
+            except (
+                redis.exceptions.TimeoutError,
+                redis.exceptions.ConnectionError,
+            ):
                 self.logger.exception("Cannot store positions in redis db.")
             t_data_processed = arrow.utcnow()
             duration_receiving = (t_data_received - t_start).total_seconds()
-            duration_processing = (t_data_processed - t_data_received).total_seconds()
+            duration_processing = (
+                t_data_processed - t_data_received
+            ).total_seconds()
             duration_total = (t_data_processed - t_start).total_seconds()
             self.logger.info(
                 "{} states received ({:.1f}s) and processed ({:.1f}s)."
-                "".format(len(_all_states), duration_receiving, duration_processing)
+                "".format(
+                    len(_all_states), duration_receiving, duration_processing
+                )
             )
             time.sleep(max(0, interval - duration_total))
 
