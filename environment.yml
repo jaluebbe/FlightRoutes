@@ -1,0 +1,12 @@
+name: flightroutes
+dependencies:
+  - requests
+  - requests-cache
+  - redis
+  - pymongo
+  - arrow
+  - timezonefinder
+  - xmltodict
+  - pip
+  - pip:
+    - PyGeodesy
