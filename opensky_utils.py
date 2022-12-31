@@ -48,6 +48,39 @@ def request_icao24_from_opensky(icao24: str):
 
 reload_icao24_to_registration()
 
+
+def validated_callsign(
+    callsign,
+    accepted_operators=None,
+    allow_numerical_callsign=True,
+    allow_alphanumerical_callsign=True,
+):
+    if callsign is None:
+        return None
+    # Remove trailing whitespaces and convert to upper case.
+    callsign = callsign.strip().upper()
+    # Check if the callsigns fits to Eurocontrol CSS rule ZG00.
+    if callsign_validator.match(callsign) is None:
+        return None
+    # Split callsign into operator and suffix and remove leading zeros.
+    operator = callsign[:3]
+    suffix = callsign[3:].lstrip("0")
+    if suffix_validator.match(suffix) is None:
+        return None
+    callsign = "{}{}".format(operator, suffix)
+    operator = callsign[:3]
+    if accepted_operators is not None and operator not in accepted_operators:
+        return None
+    response = {"callsign": callsign, "operator_icao": operator}
+    if suffix.isdigit() and allow_numerical_callsign:
+        response["callsign_number"] = int(suffix)
+    elif allow_alphanumerical_callsign:
+        pass
+    else:
+        return None
+    return response
+
+
 # checking if a position from an OpenSky Network state could be used for
 # flight route analysis and if the callsign is formatted as being an airline.
 def validated_position(
@@ -58,31 +91,26 @@ def validated_position(
     allow_on_ground=False,
     use_registration=True,
 ):
-    if opensky_state.callsign is None:
+    callsign_check = validated_callsign(
+        opensky_state.callsign,
+        accepted_operators,
+        allow_numerical_callsign,
+        allow_alphanumerical_callsign,
+    )
+    if callsign_check is None:
         return None
-    # Remove trailing whitespaces and convert to upper case.
-    callsign = opensky_state.callsign.strip().upper()
-    # Check if the callsigns fits to Eurocontrol CSS rule ZG00.
-    if callsign_validator.match(callsign) is None:
-        return None
-    # Split callsign into operator and suffix and remove leading zeros.
-    operator = callsign[:3]
-    suffix = callsign[3:].lstrip("0")
-    if suffix_validator.match(suffix) is None:
-        return None
-    callsign = "{}{}".format(operator, suffix)
     position = {
         "utc": opensky_state.time_position,
         "latitude": opensky_state.latitude,
         "longitude": opensky_state.longitude,
         "altitude": opensky_state.baro_altitude,
-        "heading": opensky_state.heading,
-        "callsign": callsign,
+        "heading": opensky_state.true_track,
         "icao24": opensky_state.icao24,
         "vertical_rate": opensky_state.vertical_rate,
         "velocity": opensky_state.velocity,
         "time_position": opensky_state.time_position,
         "on_ground": opensky_state.on_ground,
+        "category": opensky_state.category,
     }
     if None in position.values():
         # incomplete position data or invalid callsign
@@ -96,24 +124,20 @@ def validated_position(
     if flight_level > 600:
         return None
     position["flight_level"] = flight_level
-    operator = callsign[:3]
-    if accepted_operators is not None and operator not in accepted_operators:
-        return None
-    position["operator_icao"] = operator
     if opensky_state.sensors is None:
         position["sensors"] = []
     else:
         position["sensors"] = opensky_state.sensors
-    if suffix.isdigit() and allow_numerical_callsign:
-        position["callsign_number"] = int(suffix)
-    elif allow_alphanumerical_callsign:
-        pass
-    else:
-        return None
     if use_registration:
         registration = icao24_to_registration.get(position["icao24"])
         if registration is None:
             registration = request_icao24_from_opensky(position["icao24"])
         if registration is not None:
             position["registration"] = registration
+    position.update(callsign_check)
     return position
+
+
+if __name__ == "__main__":
+    update_icao24s_from_redis()
+    dump_icao24_to_registration()
