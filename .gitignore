@@ -130,3 +130,9 @@ dmypy.json
 
 # Configuration file
 *config.py
+
+# Mac OS files
+.DS_Store
+
+# SQlite databases
+*.sqb
