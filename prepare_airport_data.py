@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
+import os
 import csv
 import requests
 import sqlite3
@@ -9,6 +10,8 @@ from collections import Counter
 from timezonefinder import TimezoneFinder
 
 OURAIRPORTS_URL = "https://davidmegginson.github.io/ourairports-data/"
+PWD = os.path.dirname(os.path.abspath(__file__))
+AIRPORT_DB_FILE = f"{PWD}/airports.sqb"
 
 countries = {}
 icao_pattern = re.compile("^[A-Z]{4}$")
@@ -19,14 +22,14 @@ with requests.Session() as s:
 for _row in csv.DictReader(_response.text.splitlines(), delimiter=","):
     countries[_row["code"]] = _row["name"]
 
-db_connection = sqlite3.connect("airports.sqb")
+db_connection = sqlite3.connect(AIRPORT_DB_FILE)
 _cursor = db_connection.cursor()
 _cursor.execute(
     "SELECT count(name) FROM sqlite_master "
     "WHERE type='table' AND name='airports'"
 )
 if _cursor.fetchone()[0] == 0:
-    with open("airports.sql", encoding="utf-8") as f:
+    with open(os.path.join(PWD, "airports.sql"), encoding="utf-8") as f:
         db_connection.executescript(f.read())
 
 with requests.Session() as s:

@@ -1,8 +1,11 @@
+import os
 import math
 import logging
 import sqlite3
-import numpy as np
 from pygeodesy.ellipsoidalVincenty import LatLon
+
+PWD = os.path.dirname(os.path.abspath(__file__))
+URI = f"file:{PWD}/airports.sqb?mode=ro"
 
 
 def get_distance(lat1, lon1, lat2, lon2):
@@ -19,7 +22,7 @@ def get_distance(lat1, lon1, lat2, lon2):
 
 
 def get_closest_airports(latitude, longitude, iata_only=False):
-    connection = sqlite3.connect("file:airports.sqb?mode=ro", uri=True)
+    connection = sqlite3.connect(URI, uri=True)
     connection.create_function("DistanceBetween", 4, get_distance)
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
@@ -55,7 +58,7 @@ def get_airport_info(icao):
     assert icao is not None
     assert len(icao) == 4
     assert icao.isalpha()
-    connection = sqlite3.connect("file:airports.sqb?mode=ro", uri=True)
+    connection = sqlite3.connect(URI, uri=True)
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM Airports WHERE ICAO=?", (icao,))
@@ -91,7 +94,7 @@ def get_airport_iata(icao):
 def get_airport_icao(iata):
     assert iata is not None
     assert len(iata) == 3
-    connection = sqlite3.connect("file:airports.sqb?mode=ro", uri=True)
+    connection = sqlite3.connect(URI, uri=True)
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
     cursor.execute("SELECT ICAO from Airports WHERE IATA=?", (iata,))
