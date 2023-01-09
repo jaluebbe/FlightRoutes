@@ -12,14 +12,26 @@ def _recent_timestamp(flight):
             continue
         _date = flight[f"{_key}_DATE"]
         _time = flight[f"{_key}_TIME"]
-        return arrow.get(
-            f"{_date} {_time}", "DD.MM.YYYY HH:mm", tzinfo="Europe/Berlin"
-        ).timestamp()
+        return int(
+            arrow.get(
+                f"{_date} {_time}", "DD.MM.YYYY HH:mm", tzinfo="Europe/Berlin"
+            ).timestamp()
+        )
 
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["airports"]
 mycol = mydb["fmo"]
+
+_status_codes = {
+    "GTO": "gate_open",
+    "BOR": "boarding",
+    "GCL": "gate_closed",
+    "TXI": "taxiing",
+    "DEP": "departed",
+    "ARR": "arrived",
+    "DLY": "delayed",
+}
 
 
 def update_fmo_data():
@@ -31,11 +43,11 @@ def update_fmo_data():
         if _flight["FTYP"] == "D":
             _origin_icao = "EDDG"
             _destination_icao = get_airport_icao(_flight["CITY3"])
-            _fmo_flight["departure"] = int(_recent_timestamp(_flight))
+            _fmo_flight["departure"] = _recent_timestamp(_flight)
         else:
             _origin_icao = get_airport_icao(_flight["CITY3"])
             _destination_icao = "EDDG"
-            _fmo_flight["arrival"] = int(_recent_timestamp(_flight))
+            _fmo_flight["arrival"] = _recent_timestamp(_flight)
         _fmo_flight["_id"] = _flight["ID"]
         _airline_iata, _flight_number = _flight["FNR"].split(" ")
         _fmo_flight["airline_iata"] = _airline_iata
@@ -47,8 +59,11 @@ def update_fmo_data():
             _route_items.append(get_airport_icao(_flight["VIA3"]))
         _route_items.append(_destination_icao)
         _fmo_flight["route"] = "-".join(_route_items)
-        if _flight["REM_CODE"] is not None:
-            _fmo_flight["status"] = _flight["REM_CODE"]
+        _status_code = _flight["REM_CODE"]
+        if _status_code in _status_codes:
+            _fmo_flight["status"] = _status_codes[_status_code]
+        elif _status_code is not None:
+            _fmo_flight["status"] = _status_code
         try:
             mycol.insert_one(_fmo_flight)
         except pymongo.errors.DuplicateKeyError:
@@ -67,7 +82,7 @@ def _in_bounds(flight, utc):
 
 def get_active_flights(utc=None):
     if utc is None:
-        utc = arrow.utcnow().timestamp()
+        utc = int(arrow.utcnow().timestamp())
     flights = [
         _flight
         for _flight in mycol.find(
