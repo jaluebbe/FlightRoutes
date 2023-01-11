@@ -96,6 +96,10 @@ airport_names = {
     "Montpellier": "MPL",
     "Marsa-Alam": "RMF",
     "Dakar": "DSS",
+    "Boa Vista": "BVC",
+    "Innsbruck": "INN",
+    "Fuerteventura": "FUE",
+    "Agadir": "AGA",
 }
 missing_airports = set()
 
@@ -120,15 +124,19 @@ def _get_status(status_code, remarks):
 
 def update_lux_data():
     data = request_lux_data()
-    for _flight in data["day_arrivals"]:
+    for _flight in data["arrivals"]:
+        _airline_iata = _flight["flightNumber"][0:2]
+        _flight_number = int(_flight["flightNumber"][2:])
         _lux_flight = {
-            "_id": _flight["flight_id"],
             "status": _get_status(_flight["statusCode"], _flight["remarks"]),
-            "airline_iata": _flight["flightNumber"][0:2],
-            "flight_number": int(_flight["flightNumber"][2:]),
+            "airline_iata": _airline_iata,
+            "flight_number": _flight_number,
             "airline_name": _flight["airlineName"],
             "arrival": _recent_timestamp(_flight),
         }
+        _lux_flight["_id"] = "{}_{}_{}".format(
+            _airline_iata, _flight_number, _flight["scheduledDate"]
+        )
         _airport_name = _flight["airportName"]
         _airport_iata = airport_names.get(_airport_name)
         if _airport_iata is None:
@@ -152,16 +160,23 @@ def update_lux_data():
         try:
             mycol.insert_one(_lux_flight)
         except pymongo.errors.DuplicateKeyError:
-            mycol.update_one({"_id": _lux_flight["_id"]}, {"$set": _lux_flight})
-    for _flight in data["day_departures"]:
+            if _lux_flight["status"] != "scheduled":
+                mycol.update_one(
+                    {"_id": _lux_flight["_id"]}, {"$set": _lux_flight}
+                )
+    for _flight in data["departures"]:
+        _airline_iata = _flight["flightNumber"][0:2]
+        _flight_number = int(_flight["flightNumber"][2:])
         _lux_flight = {
-            "_id": _flight["flight_id"],
             "status": _get_status(_flight["statusCode"], _flight["remarks"]),
-            "airline_iata": _flight["flightNumber"][0:2],
-            "flight_number": int(_flight["flightNumber"][2:]),
+            "airline_iata": _airline_iata,
+            "flight_number": _flight_number,
             "airline_name": _flight["airlineName"],
             "departure": _recent_timestamp(_flight),
         }
+        _lux_flight["_id"] = "{}_{}_{}".format(
+            _airline_iata, _flight_number, _flight["scheduledDate"]
+        )
         _airport_name = _flight["airportName"]
         _airport_iata = airport_names.get(_airport_name)
         if _airport_iata is None:
@@ -185,7 +200,10 @@ def update_lux_data():
         try:
             mycol.insert_one(_lux_flight)
         except pymongo.errors.DuplicateKeyError:
-            mycol.update_one({"_id": _lux_flight["_id"]}, {"$set": _lux_flight})
+            if _lux_flight["status"] != "scheduled":
+                mycol.update_one(
+                    {"_id": _lux_flight["_id"]}, {"$set": _lux_flight}
+                )
 
 
 def _in_bounds(flight, utc):
