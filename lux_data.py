@@ -15,7 +15,7 @@ def request_lux_data():
         "flightsinfo.php?arrivalsDepartures_action=getArrivalsDepartures&"
         "lang=en"
     )
-    response = requests.get(url, timeout=5.05)  # , proxies=proxies)
+    response = requests.get(url, timeout=5.05)
     if response.status_code == 200:
         return response.json()
     else:
