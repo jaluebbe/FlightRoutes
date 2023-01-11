@@ -15,12 +15,15 @@ def request_lux_data():
         "flightsinfo.php?arrivalsDepartures_action=getArrivalsDepartures&"
         "lang=en"
     )
-    try:
-        response = requests.get(url, timeout=5.05)
-    except IOError as error:
-        logger.exception("request_lux_data()")
-    else:
+    response = requests.get(url, timeout=5.05)  # , proxies=proxies)
+    if response.status_code == 200:
         return response.json()
+    else:
+        raise Exception(
+            "status={}, content={}".format(
+                response.status_code, response.content
+            )
+        )
 
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -92,6 +95,7 @@ airport_names = {
     "Sal": "SID",
     "Montpellier": "MPL",
     "Marsa-Alam": "RMF",
+    "Dakar": "DSS",
 }
 missing_airports = set()
 
@@ -132,9 +136,7 @@ def update_lux_data():
             logger.warning(f"{_airport_name} is unknown.")
             continue
         _origin_icao = get_airport_icao(_airport_iata)
-        _route_items = [
-            _origin_icao,
-        ]
+        _route_items = [_origin_icao]
         if len(_flight["airportStepover"]) > 0:
             _via_name = _flight["airportStepover"].split(" <span>via</span> ")[
                 1
@@ -167,9 +169,7 @@ def update_lux_data():
             logger.warning(f"{_airport_name} is unknown.")
             continue
         _origin_icao = get_airport_icao(_airport_iata)
-        _route_items = [
-            "ELLX",
-        ]
+        _route_items = ["ELLX"]
         if len(_flight["airportStepover"]) > 0:
             _via_name = _flight["airportStepover"].split(" <span>via</span> ")[
                 1
