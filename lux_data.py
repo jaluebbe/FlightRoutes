@@ -30,7 +30,6 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["airports"]
 mycol = mydb["lux"]
 
-data = request_lux_data()
 status_codes = {
     "1": "closed",
     "2": "delayed",
@@ -124,9 +123,14 @@ def _get_status(status_code, remarks):
 
 def update_lux_data():
     data = request_lux_data()
+    arriving_flight_numbers = set()
+    departing_flight_numbers = set()
     for _flight in data["arrivals"]:
         _airline_iata = _flight["flightNumber"][0:2]
         _flight_number = int(_flight["flightNumber"][2:])
+        arriving_flight_numbers.add(
+            "{}_{}".format(_airline_iata, _flight_number)
+        )
         _lux_flight = {
             "status": _get_status(_flight["statusCode"], _flight["remarks"]),
             "airline_iata": _airline_iata,
@@ -167,6 +171,9 @@ def update_lux_data():
     for _flight in data["departures"]:
         _airline_iata = _flight["flightNumber"][0:2]
         _flight_number = int(_flight["flightNumber"][2:])
+        departing_flight_numbers.add(
+            "{}_{}".format(_airline_iata, _flight_number)
+        )
         _lux_flight = {
             "status": _get_status(_flight["statusCode"], _flight["remarks"]),
             "airline_iata": _airline_iata,
@@ -204,6 +211,11 @@ def update_lux_data():
                 mycol.update_one(
                     {"_id": _lux_flight["_id"]}, {"$set": _lux_flight}
                 )
+        overlapping_flights = arriving_flight_numbers.intersection(
+            departing_flight_numbers
+        )
+        if len(overlapping_flights) > 0:
+            logger.warning(f"overlapping flights: {overlapping_flights}")
 
 
 def _in_bounds(flight, utc):
