@@ -30,7 +30,6 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["airports"]
 mycol = mydb["lux"]
 
-data = request_lux_data()
 status_codes = {
     "1": "closed",
     "2": "delayed",
