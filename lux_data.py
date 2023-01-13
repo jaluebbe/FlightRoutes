@@ -5,17 +5,19 @@ import arrow
 import pymongo
 from airport_info import get_airport_icao
 from route_utils import estimate_max_flight_duration, get_route_length
+from fp.fp import FreeProxy
 
 logger = logging.getLogger(__name__)
 
 
 def request_lux_data():
+    proxies = {"https": FreeProxy(https=True).get()}
     url = (
         "https://www.lux-airport.lu/wp-content/themes/lux-airport/"
         "flightsinfo.php?arrivalsDepartures_action=getArrivalsDepartures&"
         "lang=en"
     )
-    response = requests.get(url, timeout=5.05)
+    response = requests.get(url, timeout=5.05, proxies=proxies)
     if response.status_code == 200:
         return response.json()
     else:
@@ -35,6 +37,7 @@ status_codes = {
     "2": "delayed",
     "3": "taxiing",
     "4": "scheduled",
+    "8": "cancelled",
     "9": "expected",
     "10": "take off",
     "11": "boarding",
