@@ -70,6 +70,7 @@ def update_ham_data():
             "flight_number": _flight_number,
             "arrival": _timestamp,
             "status": _flight["flightStatusArrival"],
+            "route": _route,
         }
         if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
             _ham_flight["overlap"] = True
@@ -105,6 +106,7 @@ def update_ham_data():
             "flight_number": _flight_number,
             "departure": _timestamp,
             "status": _flight["flightStatusDeparture"],
+            "route": _route,
         }
         if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
             _ham_flight["overlap"] = True
