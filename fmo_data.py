@@ -38,6 +38,7 @@ _status_codes = {
 def update_fmo_data():
     url = "https://service.fmo.de/arrdep1.xml"
     response = requests.get(url)
+    response.raise_for_status()
     flights = xmltodict.parse(response.content)["Flights"]["Flight"]
     for _flight in flights:
         _fmo_flight = {}

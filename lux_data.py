@@ -18,14 +18,8 @@ def request_lux_data():
         "lang=en"
     )
     response = requests.get(url, timeout=5.05, proxies=proxies)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(
-            "status={}, content={}".format(
-                response.status_code, response.content
-            )
-        )
+    response.raise_for_status()
+    return response.json()
 
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
