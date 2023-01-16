@@ -17,7 +17,7 @@ def request_lux_data():
         "flightsinfo.php?arrivalsDepartures_action=getArrivalsDepartures&"
         "lang=en"
     )
-    response = requests.get(url, timeout=5.05, proxies=proxies)
+    response = requests.get(url, timeout=10, proxies=proxies)
     response.raise_for_status()
     return response.json()
 
@@ -35,6 +35,7 @@ status_codes = {
     "9": "expected",
     "10": "take off",
     "11": "boarding",
+    "12": "check-in",
     "13": "arrived",
 }
 airport_names = {
