@@ -83,4 +83,5 @@ for _row in airports:
     )
 _cursor.close()
 db_connection.commit()
+db_connection.execute("VACUUM")
 db_connection.close()
