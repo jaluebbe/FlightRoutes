@@ -16,8 +16,12 @@ def request_ham_data():
     }
     session = requests.Session()
     session.headers.update(headers)
-    arrivals = session.get(url + "arrivals").json()
-    departures = session.get(url + "departures").json()
+    arrivals_response = session.get(url + "arrivals")
+    arrivals_response.raise_for_status()
+    arrivals = arrivals_response.json()
+    departures_response = session.get(url + "departures")
+    departures_response.raise_for_status()
+    departures = departures_response.json()
     arriving_flight_numbers = [_row["flightnumber"] for _row in arrivals]
     departing_flight_numbers = [_row["flightnumber"] for _row in departures]
     overlapping_flight_numbers = set(arriving_flight_numbers).intersection(
@@ -34,17 +38,15 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["airports"]
 mycol = mydb["ham"]
 
-# "2023-01-11T14:40:00.000+01:00[EUROPE/BERLIN]"[:29]
-
 
 def _get_date_and_time(flight):
     for _key in ["plannedDepartureTime", "plannedArrivalTime"]:
         if flight.get(_key) is not None:
-            _timestamp = arrow.get(flight[_key][:29])
+            _timestamp = arrow.get(flight[_key].split("[")[0])
             _date = _timestamp.format("YYYY-MM-DD")
     for _key in ["expectedDepartureTime", "expectedArrivalTime"]:
         if flight.get(_key) is not None:
-            _timestamp = arrow.get(flight[_key][:29])
+            _timestamp = arrow.get(flight[_key].split("[")[0])
     return _date, _timestamp.timestamp()
 
 
@@ -88,9 +90,7 @@ def update_ham_data():
             continue
         _flight_number = int(_flight["flightnumber"][3:])
         _date, _timestamp = _get_date_and_time(_flight)
-        _route_items = [
-            "EDDH",
-        ]
+        _route_items = ["EDDH"]
         if _flight["viaAirport3LCode"] is not None:
             _route_items.append(get_airport_icao(_flight["viaAirport3LCode"]))
         _route_items.append(
