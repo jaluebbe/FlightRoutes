@@ -27,7 +27,7 @@ class OpenSkyApiConsumer:
     def _initialize_connection(self):
         self.api = OpenSkyApi(OPENSKY_USER, OPENSKY_PASSWORD)
 
-    def worker(self, interval=10):
+    def worker(self, interval=45):
         while True:
             update_icao24s_from_redis()
             positions = {}
@@ -71,7 +71,7 @@ class OpenSkyApiConsumer:
                 if position is None:
                     continue
                 age = states_time - position["time_position"]
-                if age > 15:
+                if age > 60:
                     continue
                 callsign = position["callsign"]
                 positions[callsign] = position
