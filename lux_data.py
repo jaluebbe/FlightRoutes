@@ -4,6 +4,7 @@ import requests
 import arrow
 import pymongo
 from airport_info import get_airport_icao
+from airline_info import get_airline_icao
 from route_utils import estimate_max_flight_duration, get_route_length
 from fp.fp import FreeProxy
 
@@ -126,14 +127,19 @@ def update_lux_data():
     for _flight in data["arrivals"]:
         _airline_iata = _flight["flightNumber"][0:2]
         _flight_number = int(_flight["flightNumber"][2:])
+        _airline_name = _flight["airlineName"]
         arriving_flight_numbers.add(
             "{}_{}".format(_airline_iata, _flight_number)
+        )
+        _airline_icao = get_airline_icao(
+            _airline_iata, _airline_name, _flight_number
         )
         _lux_flight = {
             "status": _get_status(_flight["statusCode"], _flight["remarks"]),
             "airline_iata": _airline_iata,
+            "airline_icao": _airline_icao,
             "flight_number": _flight_number,
-            "airline_name": _flight["airlineName"],
+            "airline_name": _airline_name,
             "arrival": _recent_timestamp(_flight),
         }
         _lux_flight["_id"] = "{}_{}_{}".format(
@@ -169,14 +175,19 @@ def update_lux_data():
     for _flight in data["departures"]:
         _airline_iata = _flight["flightNumber"][0:2]
         _flight_number = int(_flight["flightNumber"][2:])
+        _airline_name = _flight["airlineName"]
         departing_flight_numbers.add(
             "{}_{}".format(_airline_iata, _flight_number)
+        )
+        _airline_icao = get_airline_icao(
+            _airline_iata, _airline_name, _flight_number
         )
         _lux_flight = {
             "status": _get_status(_flight["statusCode"], _flight["remarks"]),
             "airline_iata": _airline_iata,
+            "airline_icao": _airline_icao,
             "flight_number": _flight_number,
-            "airline_name": _flight["airlineName"],
+            "airline_name": _airline_name,
             "departure": _recent_timestamp(_flight),
         }
         _lux_flight["_id"] = "{}_{}_{}".format(
