@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import time
 import arrow
 import pymongo
 import requests
 from airport_info import get_airport_icao
+from airline_info import get_airline_icao
 from route_utils import estimate_max_flight_duration, get_route_length
 
 from config import HAM_API_KEY
@@ -17,9 +19,17 @@ def request_ham_data():
     session = requests.Session()
     session.headers.update(headers)
     arrivals_response = session.get(url + "arrivals")
+    if arrivals_response.status_code != 200:
+        # retry once if request was not successful
+        time.sleep(5)
+        arrivals_response = session.get(url + "arrivals")
     arrivals_response.raise_for_status()
     arrivals = arrivals_response.json()
     departures_response = session.get(url + "departures")
+    if departures_response.status_code != 200:
+        # retry once if request was not successful
+        time.sleep(5)
+        departures_response = session.get(url + "departures")
     departures_response.raise_for_status()
     departures = departures_response.json()
     arriving_flight_numbers = [_row["flightnumber"] for _row in arrivals]
@@ -57,6 +67,10 @@ def update_ham_data():
         if _airline_iata is None:
             continue
         _flight_number = int(_flight["flightnumber"][3:])
+        _airline_name = _flight["airlineName"]
+        _airline_icao = get_airline_icao(
+            _airline_iata, _airline_name, _flight_number
+        )
         _date, _timestamp = _get_date_and_time(_flight)
         _route_items = [get_airport_icao(_flight["originAirport3LCode"])]
         if _flight["viaAirport3LCode"] is not None:
@@ -69,6 +83,8 @@ def update_ham_data():
         _ham_flight = {
             "_id": _key,
             "airline_iata": _airline_iata,
+            "airline_icao": _airline_icao,
+            "airline_name": _airline_name,
             "flight_number": _flight_number,
             "arrival": _timestamp,
             "status": _flight["flightStatusArrival"],
@@ -89,6 +105,10 @@ def update_ham_data():
         if _airline_iata is None:
             continue
         _flight_number = int(_flight["flightnumber"][3:])
+        _airline_name = _flight["airlineName"]
+        _airline_icao = get_airline_icao(
+            _airline_iata, _airline_name, _flight_number
+        )
         _date, _timestamp = _get_date_and_time(_flight)
         _route_items = ["EDDH"]
         if _flight["viaAirport3LCode"] is not None:
@@ -103,6 +123,8 @@ def update_ham_data():
         _ham_flight = {
             "_id": _key,
             "airline_iata": _airline_iata,
+            "airline_icao": _airline_icao,
+            "airline_name": _airline_name,
             "flight_number": _flight_number,
             "departure": _timestamp,
             "status": _flight["flightStatusDeparture"],
