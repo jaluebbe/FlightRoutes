@@ -4,6 +4,7 @@ import arrow
 import xmltodict
 import pymongo
 from airport_info import get_airport_icao
+from airline_info import get_airline_icao
 from route_utils import estimate_max_flight_duration, get_route_length
 
 
@@ -52,11 +53,20 @@ def update_fmo_data():
             _fmo_flight["arrival"] = _recent_timestamp(_flight)
         _fmo_flight["_id"] = _flight["ID"]
         _airline_iata, _flight_number = _flight["FNR"].split(" ")
+        _flight_number = int(_flight_number)
+        if _airline_iata == "LH":
+            # https://de.wikipedia.org/wiki/Lufthansa#Flugnummernsystem
+            if 8000 <= _flight_number <= 8515:
+                _airline_name = "Lufthansa Cargo"
+            else:
+                _airline_name = "Lufthansa"
+        else:
+            _airline_name = None
+        _airline_icao = get_airline_icao(_airline_iata, _airline_name)
         _fmo_flight["airline_iata"] = _airline_iata
-        _fmo_flight["flight_number"] = int(_flight_number)
-        _route_items = [
-            _origin_icao,
-        ]
+        _fmo_flight["airline_icao"] = _airline_icao
+        _fmo_flight["flight_number"] = _flight_number
+        _route_items = [_origin_icao]
         if _flight["VIA3"] is not None:
             _route_items.append(get_airport_icao(_flight["VIA3"]))
         _route_items.append(_destination_icao)
