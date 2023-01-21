@@ -54,15 +54,9 @@ def update_fmo_data():
         _fmo_flight["_id"] = _flight["ID"]
         _airline_iata, _flight_number = _flight["FNR"].split(" ")
         _flight_number = int(_flight_number)
-        if _airline_iata == "LH":
-            # https://de.wikipedia.org/wiki/Lufthansa#Flugnummernsystem
-            if 8000 <= _flight_number <= 8515:
-                _airline_name = "Lufthansa Cargo"
-            else:
-                _airline_name = "Lufthansa"
-        else:
-            _airline_name = None
-        _airline_icao = get_airline_icao(_airline_iata, _airline_name)
+        _airline_icao = get_airline_icao(
+            iata=_airline_iata, flight_number=_flight_number
+        )
         _fmo_flight["airline_iata"] = _airline_iata
         _fmo_flight["airline_icao"] = _airline_icao
         _fmo_flight["flight_number"] = _flight_number

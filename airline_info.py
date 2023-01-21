@@ -43,7 +43,16 @@ def get_airlines_by_iata(iata: str):
         return [dict(_row) for _row in results]
 
 
-def get_airline_by_iata(iata: str, name: str = None):
+def get_airline_by_iata(iata: str, name: str = None, flight_number: int = None):
+    if flight_number is not None:
+        if iata == "LH":
+            # https://de.wikipedia.org/wiki/Lufthansa#Flugnummernsystem
+            if 8000 <= flight_number <= 8515:
+                name = "Lufthansa Cargo"
+            else:
+                name = "Lufthansa"
+        elif iata == "LX":
+            name = "SWISS"
     results = get_airlines_by_iata(iata)
     if results is None:
         return None
@@ -64,8 +73,8 @@ def get_airline_iata(icao: str):
         return result["IATA"]
 
 
-def get_airline_icao(iata: str, name: str = None):
-    result = get_airline_by_iata(iata, name)
+def get_airline_icao(iata: str, name: str = None, flight_number: int = None):
+    result = get_airline_by_iata(iata, name, flight_number)
     if result is not None:
         return result["ICAO"]
 
