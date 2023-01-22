@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from pygeodesy.ellipsoidalVincenty import LatLon
 from airport_info import get_airport_info
@@ -25,6 +26,21 @@ def get_route_length(route):
 
 def estimate_max_flight_duration(distance, factor=0.00486, offset=1500):
     return factor * distance + 1500
+
+
+def estimate_progress(flight, utc=None):
+    if utc is None:
+        utc = int(time.time())
+    if not None in (flight.get("arrival"), flight.get("departure")):
+        duration = flight["arrival"] - flight["departure"]
+        return (utc - flight["departure"]) / duration
+    else:
+        distance = get_route_length(flight["route"])
+        max_duration = estimate_max_flight_duration(distance)
+    if flight.get("arrival") is not None:
+        return (utc - (flight["arrival"] - max_duration)) / max_duration
+    elif flight.get("departure") is not None:
+        return (utc - flight["departure"]) / max_duration
 
 
 def single_route_check_simple(position, route):
