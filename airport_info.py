@@ -2,7 +2,6 @@ import os
 import math
 import logging
 import sqlite3
-from pygeodesy.ellipsoidalVincenty import LatLon
 
 PWD = os.path.dirname(os.path.abspath(__file__))
 URI = f"file:{PWD}/airports.sqb?mode=ro"
