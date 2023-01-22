@@ -18,7 +18,7 @@ class Airport:
         self.iata = iata
         self.myclient = pymongo.MongoClient("mongodb://localhost:27017/")
         self.mydb = self.myclient["airports"]
-        self.mycol = self.mydb[self.iata]
+        self.mycol = self.mydb[self.iata.lower()]
 
     def update_data(self):
         pass
