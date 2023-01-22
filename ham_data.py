@@ -57,7 +57,7 @@ def _get_date_and_time(flight):
 
 class Airport(airport_data.Airport):
     def __init__(self):
-        super().__init__("ham")
+        super().__init__("HAM")
 
     def update_data(self):
         data = request_ham_data()

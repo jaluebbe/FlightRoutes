@@ -34,7 +34,7 @@ _status_codes = {
 
 class Airport(airport_data.Airport):
     def __init__(self):
-        super().__init__("fmo")
+        super().__init__("FMO")
 
     def update_data(self):
         url = "https://service.fmo.de/arrdep1.xml"
