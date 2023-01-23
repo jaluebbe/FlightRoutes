@@ -1,0 +1,8 @@
+redis
+requests
+numpy
+pymongo
+arrow
+xmltodict
+timezonefinder
+PyGeodesy

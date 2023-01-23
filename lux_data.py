@@ -6,19 +6,17 @@ import pymongo.errors
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
 import airport_data
-from fp.fp import FreeProxy
 
 logger = logging.getLogger(__name__)
 
 
 def request_lux_data():
-    proxies = {"https": FreeProxy(https=True).get()}
     url = (
         "https://www.lux-airport.lu/wp-content/themes/lux-airport/"
         "flightsinfo.php?arrivalsDepartures_action=getArrivalsDepartures&"
         "lang=en"
     )
-    response = requests.get(url, timeout=10, proxies=proxies)
+    response = requests.get(url, timeout=10)
     response.raise_for_status()
     return response.json()
 
@@ -99,7 +97,7 @@ def _recent_timestamp(flight):
 
 class Airport(airport_data.Airport):
     def __init__(self):
-        super().__init__("lux")
+        super().__init__("LUX")
         self.status_codes = {
             "1": "closed",
             "2": "delayed",
