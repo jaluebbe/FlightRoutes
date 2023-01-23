@@ -29,6 +29,7 @@ _status_codes = {
     "DEP": "departed",
     "ARR": "arrived",
     "DLY": "delayed",
+    "CXXT": "cancelled",
 }
 
 
