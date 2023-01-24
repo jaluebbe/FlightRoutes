@@ -1,0 +1,7 @@
+import arrow
+
+OUTDATED = arrow.get("2022-10-01").timestamp()
+OPENSKY_USER = ""
+OPENSKY_PASSWORD = ""
+REDIS_HOST = "localhost"
+HAM_API_KEY = ""
