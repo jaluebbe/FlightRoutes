@@ -1,4 +1,5 @@
 import numpy as np
+import arrow
 from pygeodesy.ellipsoidalVincenty import LatLon
 from airport_info import get_airport_info
 
@@ -138,3 +139,70 @@ def route_check_simple(position, route):
     if current_route["check_failed"] == False:
         return current_route
     return route_info[np.argmin(route_angle)]
+
+
+def combine_routes(route_a, route_b):
+    _route_items_a = route_a.split("-")
+    _route_items_b = route_b.split("-")
+    if _route_items_a == _route_items_b:
+        return "-".join(_route_items_a)
+    elif _route_items_a[1:] == _route_items_b[:-1]:
+        return "-".join(_route_items_a + _route_items_b[-1:])
+    elif _route_items_a[-1] == _route_items_b[0]:
+        return "-".join(_route_items_a + _route_items_b[1:])
+
+
+def combine_flights(flight_a, flight_b):
+    _arrival_a = flight_a.get("arrival")
+    _departure_a = flight_a.get("departure")
+    _arrival_b = flight_b.get("arrival")
+    _departure_b = flight_b.get("departure")
+
+    if _arrival_a is not None and _departure_b is not None:
+        if _departure_b > _arrival_a:
+            _departure = _arrival_a - estimate_max_flight_duration(
+                get_route_length(flight_a["route"])
+            )
+            _arrival = _departure_b + estimate_max_flight_duration(
+                get_route_length(flight_b["route"])
+            )
+            _route = combine_routes(flight_a["route"], flight_b["route"])
+        elif _departure_b < _arrival_a:
+            _departure = _departure_b
+            _arrival = _arrival_a
+            _route = combine_routes(flight_b["route"], flight_a["route"])
+    elif _arrival_b is not None and _departure_a is not None:
+        if _departure_a > _arrival_b:
+            _departure = _arrival_b - estimate_max_flight_duration(
+                get_route_length(flight_b["route"])
+            )
+            _arrival = _departure_a + estimate_max_flight_duration(
+                get_route_length(flight_a["route"])
+            )
+            _route = combine_routes(flight_b["route"], flight_a["route"])
+        elif _departure_a < _arrival_b:
+            _departure = _departure_a
+            _arrival = _arrival_b
+            _route = combine_routes(flight_a["route"], flight_b["route"])
+    else:
+        return
+    _duration = _arrival - _departure
+    if _duration > 18 * 3600:
+        return None
+    if _route is None:
+        return
+    _date = arrow.get(_departure).format("YYYY-MM-DD")
+    _airline_iata = flight_a["airline_iata"]
+    _flight_number = flight_a["flight_number"]
+    response = {
+        "_id": f"{_airline_iata}_{_flight_number}_{_date}_{_route}",
+        "flight_number": _flight_number,
+        "airline_iata": _airline_iata,
+        "airline_icao": flight_a["airline_icao"],
+        "departure": _departure,
+        "arrival": _arrival,
+        "route": _route,
+    }
+    if flight_a.get("airline_name") is not None:
+        response["airline_name"] = flight_a["airline_name"]
+    return response

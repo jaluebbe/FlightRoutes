@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 import time
+import itertools
 import arrow
 import pymongo
 import requests
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
-from route_utils import estimate_max_flight_duration, get_route_length
+from route_utils import (
+    estimate_max_flight_duration,
+    get_route_length,
+    combine_flights,
+)
 
 from config import HAM_API_KEY
 
@@ -62,6 +67,7 @@ def _get_date_and_time(flight):
 
 def update_ham_data():
     data = request_ham_data()
+    overlapping_flights = {}
     for _flight in data["arrivals"]:
         _airline_iata = _flight["airline2LCode"]
         if _airline_iata is None:
@@ -90,12 +96,16 @@ def update_ham_data():
             "status": _flight["flightStatusArrival"],
             "route": _route,
         }
-        if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
-            _ham_flight["overlap"] = True
         if _flight["cancelled"]:
             _ham_flight["cancelled"] = True
         if _flight["diverted"]:
             _ham_flight["diverted"] = True
+        if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
+            _ham_flight["overlap"] = True
+            _key = f"{_airline_iata}_{_flight_number}"
+            overlapping_flights.setdefault(_key, [])
+            overlapping_flights[_key].append(_ham_flight)
+            continue
         try:
             mycol.insert_one(_ham_flight)
         except pymongo.errors.DuplicateKeyError:
@@ -130,16 +140,31 @@ def update_ham_data():
             "status": _flight["flightStatusDeparture"],
             "route": _route,
         }
-        if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
-            _ham_flight["overlap"] = True
         if _flight["cancelled"]:
             _ham_flight["cancelled"] = True
         if _flight["diverted"]:
             _ham_flight["diverted"] = True
+        if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
+            _ham_flight["overlap"] = True
+            _key = f"{_airline_iata}_{_flight_number}"
+            overlapping_flights.setdefault(_key, [])
+            overlapping_flights[_key].append(_ham_flight)
+            continue
         try:
             mycol.insert_one(_ham_flight)
         except pymongo.errors.DuplicateKeyError:
             mycol.update_one({"_id": _ham_flight["_id"]}, {"$set": _ham_flight})
+    for _flights in overlapping_flights.values():
+        for _items in itertools.combinations(_flights, 2):
+            _combined_flight = combine_flights(*_items)
+            if _combined_flight is None:
+                continue
+            try:
+                mycol.insert_one(_combined_flight)
+            except pymongo.errors.DuplicateKeyError:
+                mycol.update_one(
+                    {"_id": _combined_flight["_id"]}, {"$set": _combined_flight}
+                )
 
 
 def _in_bounds(flight, utc):
