@@ -39,6 +39,7 @@ for _row in _airlines:
         "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
         (_row["ICAO"], _row["IATA"], _row["Name"]),
     )
+_cursor.execute("UPDATE airlines SET IATA='IV' WHERE ICAO='GPX'")
 _cursor.close()
 db_connection.commit()
 db_connection.execute("VACUUM")
