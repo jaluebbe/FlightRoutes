@@ -11,3 +11,4 @@ dependencies:
   - pip
   - pip:
     - PyGeodesy
+    - free-proxy

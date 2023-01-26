@@ -3,6 +3,7 @@ import logging
 import requests
 import arrow
 import pymongo.errors
+from fp.fp import FreeProxy
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
 import airport_data
@@ -11,12 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def request_lux_data():
+    proxies = {"https": FreeProxy(https=True).get()}
     url = (
         "https://www.lux-airport.lu/wp-content/themes/lux-airport/"
         "flightsinfo.php?arrivalsDepartures_action=getArrivalsDepartures&"
         "lang=en"
     )
-    response = requests.get(url, timeout=10)
+    response = requests.get(url, timeout=10, proxies=proxies)
     response.raise_for_status()
     return response.json()
 
