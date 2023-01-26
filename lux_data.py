@@ -80,6 +80,8 @@ airport_names = {
     "Innsbruck": "INN",
     "Fuerteventura": "FUE",
     "Agadir": "AGA",
+    "Zaventem": "BRU",
+    "Luxembourg": "LUX",
 }
 
 
@@ -225,8 +227,8 @@ class Airport(airport_data.Airport):
             overlapping_flights = arriving_flight_numbers.intersection(
                 departing_flight_numbers
             )
-            if len(overlapping_flights) > 0:
-                logger.warning(f"overlapping flights: {overlapping_flights}")
+        if len(overlapping_flights) > 0:
+            logger.warning(f"overlapping flights: {overlapping_flights}")
 
     def check_metadata(self):
         if len(self.missing_airports) > 0:
