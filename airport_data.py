@@ -7,18 +7,20 @@ def _in_bounds(flight, utc):
     _departure = flight.get("departure")
     _arrival = flight.get("arrival")
     _length = get_route_length(flight["route"])
-    if _departure is not None:
+    if _departure is not None and _arrival is not None:
+        return _departure < utc < _arrival
+    elif _departure is not None:
         return _departure + estimate_max_flight_duration(_length) > utc
     elif _arrival is not None:
         return _arrival - estimate_max_flight_duration(_length) < utc
 
 
 class Airport:
-    def __init__(self, iata: str):
-        self.iata = iata
+    def __init__(self, source: str):
+        self.source = source
         self.myclient = pymongo.MongoClient("mongodb://localhost:27017/")
         self.mydb = self.myclient["airports"]
-        self.mycol = self.mydb[self.iata.lower()]
+        self.mycol = self.mydb[self.source.lower()]
 
     def update_data(self):
         pass
