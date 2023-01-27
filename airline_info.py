@@ -20,10 +20,11 @@ def get_airline_info(icao: str):
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM Airlines WHERE ICAO=?", (icao,))
-    result = dict(cursor.fetchone())
+    result = cursor.fetchone()
     cursor.close()
     connection.close()
-    return result
+    if result is not None:
+        return dict(result)
 
 
 def get_airlines_by_iata(iata: str):
