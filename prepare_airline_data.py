@@ -55,9 +55,12 @@ for _icao_iata in [
     ("FAJ", "PC"),
     ("STU", "FS"),
     ("IBK", "D8"),
+    ("JAB", "W9"),
+    ("IBZ", "6I"),
 ]:
     _cursor.execute("DELETE FROM airlines WHERE ICAO=? AND IATA=?", _icao_iata)
 _cursor.execute("UPDATE airlines SET IATA='IV' WHERE ICAO='GPX'")
+_cursor.execute("UPDATE airlines SET IATA='' WHERE ICAO='AAB'")
 _cursor.close()
 db_connection.commit()
 db_connection.execute("VACUUM")
