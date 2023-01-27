@@ -42,6 +42,23 @@ URL = "https://flydata.avinor.no/XmlFeed.asp"
 logger = logging.getLogger(__name__)
 
 
+def _get_date_and_time(flight):
+    _timestamp = arrow.get(flight["schedule_time"])
+    _date = _timestamp.format("YYYY-MM-DD")
+    if "status" in flight and "@time" in flight["status"]:
+        _timestamp = arrow.get(flight["status"]["time"])
+    return _date, _timestamp.timestamp()
+
+
+_status_codes = {
+    "A": "arrived",
+    "C": "cancelled",
+    "D": "departed",
+    "E": "new_time",
+    "N": "new_info",
+}
+
+
 def request_airport_data(airport_iata):
     airport_icao = get_airport_icao(airport_iata)
     params = {"airport": airport_iata, "TimeTo": 36, "TimeFrom": 36}
@@ -100,15 +117,16 @@ def request_airport_data(airport_iata):
                         "missing airport icao for {}".format(stopover_iata)
                     )
         direction = flight["arr_dep"]
+        if "status" in flight:
+            _status_code = flight["status"]["@code"]
+            flight["status"] = _status_codes[_status_code]
         route_items = []
         if direction == "A":
             route_items.append(other_airport_icao)
             route_items += stopovers_icao
             route_items.append(airport_icao)
             _route = "-".join(route_items)
-            _timestamp = arrow.get(flight["schedule_time"])
-            _date = _timestamp.format("YYYY-MM-DD")
-            arrival = int(_timestamp.timestamp())
+            _date, _arrival = _get_date_and_time(flight)
             _key = "{}_{}_{}_{}".format(
                 operator_iata, flight_number, _date, _route
             )
@@ -117,7 +135,7 @@ def request_airport_data(airport_iata):
                 "airline_iata": operator_iata,
                 "airline_icao": operator_icao,
                 "flight_number": flight_number,
-                "arrival": arrival,
+                "arrival": _arrival,
                 "route": _route,
             }
         elif direction == "D":
@@ -125,9 +143,7 @@ def request_airport_data(airport_iata):
             route_items += stopovers_icao
             route_items.append(other_airport_icao)
             _route = "-".join(route_items)
-            _timestamp = arrow.get(flight["schedule_time"])
-            _date = _timestamp.format("YYYY-MM-DD")
-            departure = int(_timestamp.timestamp())
+            _date, _departure = _get_date_and_time(flight)
             _key = "{}_{}_{}_{}".format(
                 operator_iata, flight_number, _date, _route
             )
@@ -136,7 +152,7 @@ def request_airport_data(airport_iata):
                 "airline_iata": operator_iata,
                 "airline_icao": operator_icao,
                 "flight_number": flight_number,
-                "departure": departure,
+                "departure": _departure,
                 "route": _route,
             }
 
