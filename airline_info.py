@@ -65,7 +65,8 @@ def get_airline_by_iata(iata: str, name: str = None, flight_number: int = None):
         [(_similarity(_row["Name"], name), _row) for _row in results]
     )
     logging.info(ordered_results)
-    return ordered_results[-1][1]
+    if len(ordered_results) > 0:
+        return ordered_results[-1][1]
 
 
 def get_airline_iata(icao: str):

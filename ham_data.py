@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import time
+import logging
 import arrow
 import requests
 from airport_info import get_airport_icao
@@ -7,6 +8,8 @@ from airline_info import get_airline_icao
 import airport_data
 
 from config import HAM_API_KEY
+
+logger = logging.getLogger(__name__)
 
 
 def request_ham_data():
@@ -69,6 +72,13 @@ class Airport(airport_data.Airport):
             _airline_icao = get_airline_icao(
                 _airline_iata, _airline_name, _flight_number
             )
+            if None in (_airline_icao, _airline_iata):
+                logger.warning(
+                    "operator information incomplete {}, {}".format(
+                        _airline_icao, _airline_iata
+                    )
+                )
+                continue
             _date, _timestamp = _get_date_and_time(_flight)
             _route_items = [get_airport_icao(_flight["originAirport3LCode"])]
             if _flight["viaAirport3LCode"] is not None:
@@ -108,6 +118,13 @@ class Airport(airport_data.Airport):
             _airline_icao = get_airline_icao(
                 _airline_iata, _airline_name, _flight_number
             )
+            if None in (_airline_icao, _airline_iata):
+                logger.warning(
+                    "operator information incomplete {}, {}".format(
+                        _airline_icao, _airline_iata
+                    )
+                )
+                continue
             _date, _timestamp = _get_date_and_time(_flight)
             _route_items = ["EDDH"]
             if _flight["viaAirport3LCode"] is not None:
