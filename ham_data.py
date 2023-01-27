@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import time
 import arrow
-import pymongo
 import requests
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
@@ -97,12 +96,9 @@ class Airport(airport_data.Airport):
                 _ham_flight["diverted"] = True
             if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
                 _ham_flight["overlap"] = True
-            try:
-                self.mycol.insert_one(_ham_flight)
-            except pymongo.errors.DuplicateKeyError:
-                self.mycol.update_one(
-                    {"_id": _ham_flight["_id"]}, {"$set": _ham_flight}
-                )
+            self.mycol.update_one(
+                {"_id": _ham_flight["_id"]}, {"$set": _ham_flight}, upsert=True
+            )
         for _flight in data["departures"]:
             _airline_iata = _flight["airline2LCode"]
             if _airline_iata is None:
@@ -141,12 +137,9 @@ class Airport(airport_data.Airport):
                 _ham_flight["diverted"] = True
             if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
                 _ham_flight["overlap"] = True
-            try:
-                self.mycol.insert_one(_ham_flight)
-            except pymongo.errors.DuplicateKeyError:
-                self.mycol.update_one(
-                    {"_id": _ham_flight["_id"]}, {"$set": _ham_flight}
-                )
+            self.mycol.update_one(
+                {"_id": _ham_flight["_id"]}, {"$set": _ham_flight}, upsert=True
+            )
 
 
 if __name__ == "__main__":

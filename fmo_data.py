@@ -2,7 +2,6 @@
 import requests
 import arrow
 import xmltodict
-import pymongo.errors
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
 import airport_data
@@ -71,12 +70,9 @@ class Airport(airport_data.Airport):
                 _fmo_flight["status"] = _status_codes[_status_code]
             elif _status_code is not None:
                 _fmo_flight["status"] = _status_code
-            try:
-                self.mycol.insert_one(_fmo_flight)
-            except pymongo.errors.DuplicateKeyError:
-                self.mycol.update_one(
-                    {"_id": _fmo_flight["_id"]}, {"$set": _fmo_flight}
-                )
+            self.mycol.update_one(
+                {"_id": _fmo_flight["_id"]}, {"$set": _fmo_flight}, upsert=True
+            )
 
 
 if __name__ == "__main__":
