@@ -55,7 +55,7 @@ def set_checked_flightroute(
         ):
             valid_from = old_flight["valid_from"]
     if reset_errors:
-        _reset_error_count(flight["callsign"], flight["route"])
+        reset_error_count(flight["callsign"], flight["route"])
     connection = sqlite3.connect(ROUTES_DB_FILE)
     connection.row_factory = sqlite3.Row
     _cursor = connection.cursor()
@@ -100,12 +100,26 @@ def get_checked_flightroute(callsign: str, route: str) -> dict:
     return result
 
 
-def _reset_error_count(callsign: str, route: str) -> None:
+def reset_error_count(callsign: str, route: str) -> None:
     connection = sqlite3.connect(ROUTES_DB_FILE)
     connection.row_factory = sqlite3.Row
     _cursor = connection.cursor()
     _cursor.execute(
         "UPDATE flight_routes SET Errors = 0 WHERE Callsign=? AND Route=?",
+        (callsign, route),
+    )
+    result = _cursor.fetchone()
+    _cursor.close()
+    connection.close()
+
+
+def increase_error_count(callsign: str, route: str) -> None:
+    connection = sqlite3.connect(ROUTES_DB_FILE)
+    connection.row_factory = sqlite3.Row
+    _cursor = connection.cursor()
+    _cursor.execute(
+        "UPDATE flight_routes SET Errors = Errors + 1 "
+        "WHERE Callsign=? AND Route=?",
         (callsign, route),
     )
     result = _cursor.fetchone()
