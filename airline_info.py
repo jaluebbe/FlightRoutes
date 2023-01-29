@@ -52,8 +52,6 @@ def get_airline_by_iata(iata: str, name: str = None, flight_number: int = None):
                 name = "Lufthansa Cargo"
             else:
                 name = "Lufthansa"
-        elif iata == "LX":
-            name = "SWISS"
     results = get_airlines_by_iata(iata)
     if results is None:
         return None
