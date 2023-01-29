@@ -5,7 +5,7 @@ import arrow
 import requests
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
-import airport_data
+import flight_data_source
 
 from config import HAM_API_KEY
 
@@ -57,7 +57,7 @@ def _get_date_and_time(flight):
     return _date, _timestamp.timestamp()
 
 
-class Airport(airport_data.Airport):
+class Airport(flight_data_source.FlightDataSource):
     def __init__(self):
         super().__init__("HAM")
 

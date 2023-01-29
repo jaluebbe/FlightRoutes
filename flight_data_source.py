@@ -15,7 +15,7 @@ def _in_bounds(flight, utc):
         return _arrival - estimate_max_flight_duration(_length) < utc
 
 
-class Airport:
+class FlightDataSource:
     def __init__(self, source: str):
         self.source = source
         self.myclient = pymongo.MongoClient("mongodb://localhost:27017/")

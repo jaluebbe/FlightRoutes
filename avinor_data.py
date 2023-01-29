@@ -5,7 +5,7 @@ import requests
 import xmltodict
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao, get_airline_iata
-import airport_data
+import flight_data_source
 
 avinor_airports_iata = (
     "AES",
@@ -157,9 +157,9 @@ def request_airport_data(airport_iata):
             }
 
 
-class Airport(airport_data.Airport):
+class Airport(flight_data_source.FlightDataSource):
     def __init__(self):
-        super().__init__("avinor")
+        super().__init__("Avinor")
 
     def update_data(self):
         for _airport_iata in avinor_airports_iata:

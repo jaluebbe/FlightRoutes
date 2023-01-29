@@ -6,7 +6,7 @@ import pymongo.errors
 from fp.fp import FreeProxy
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
-import airport_data
+import flight_data_source
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ def _recent_timestamp(flight):
     return int(arrow.get(_timestring, tzinfo="Europe/Luxembourg").timestamp())
 
 
-class Airport(airport_data.Airport):
+class Airport(flight_data_source.FlightDataSource):
     def __init__(self):
         super().__init__("LUX")
         self.status_codes = {

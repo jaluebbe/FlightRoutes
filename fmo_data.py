@@ -4,7 +4,7 @@ import arrow
 import xmltodict
 from airport_info import get_airport_icao
 from airline_info import get_airline_icao
-import airport_data
+import flight_data_source
 
 
 def _recent_timestamp(flight):
@@ -32,7 +32,7 @@ _status_codes = {
 }
 
 
-class Airport(airport_data.Airport):
+class Airport(flight_data_source.FlightDataSource):
     def __init__(self):
         super().__init__("FMO")
 
