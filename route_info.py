@@ -39,8 +39,10 @@ def set_checked_flightroute(
     utc = time.time()
     old_flight = get_checked_flightroute(flight["callsign"], flight["route"])
     valid_from = int(utc)
+    errors = 0
     if old_flight is not None:
         if old_flight["quality"] < quality:
+            # allow sources of better quality to overwrite
             pass
         elif old_flight["update_time"] < OUTDATED:
             pass
@@ -48,21 +50,24 @@ def set_checked_flightroute(
             # old record will be overwritten
             pass
         elif old_flight["quality"] > quality:
+            # Deny sources of lower quality to overwrite except for
+            # many errors or outdated data.
             return False
         if (
             old_flight["flight_number"] == flight["flight_number"]
+            and old_flight["operator_iata"] == flight["airline_iata"]
             and old_flight["valid_from"] is not None
         ):
             valid_from = old_flight["valid_from"]
-    if reset_errors:
-        reset_error_count(flight["callsign"], flight["route"])
+            if not reset_errors:
+                errors = old_flight["errors"]
     connection = sqlite3.connect(ROUTES_DB_FILE)
     connection.row_factory = sqlite3.Row
     _cursor = connection.cursor()
     _cursor.execute(
         "REPLACE INTO flight_routes (Callsign, Route, Source, OperatorIcao, "
-        "OperatorIata, FlightNumber, Quality, UpdateTime, ValidFrom) VALUES "
-        "(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "OperatorIata, FlightNumber, Quality, Errors, UpdateTime, ValidFrom) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             flight["callsign"],
             flight["route"],
@@ -71,6 +76,7 @@ def set_checked_flightroute(
             flight["airline_iata"],
             flight["flight_number"],
             quality,
+            errors,
             int(utc),
             valid_from,
         ),
