@@ -108,8 +108,8 @@ def reset_error_count(callsign: str, route: str) -> None:
         "UPDATE flight_routes SET Errors = 0 WHERE Callsign=? AND Route=?",
         (callsign, route),
     )
-    result = _cursor.fetchone()
     _cursor.close()
+    connection.commit()
     connection.close()
 
 
@@ -122,8 +122,8 @@ def increase_error_count(callsign: str, route: str) -> None:
         "WHERE Callsign=? AND Route=?",
         (callsign, route),
     )
-    result = _cursor.fetchone()
     _cursor.close()
+    connection.commit()
     connection.close()
 
 
