@@ -8,26 +8,27 @@ import lux_data
 import fmo_data
 import ham_data
 import avinor_data
+import lh_cargo_data
 from route_utils import route_check_simple, estimate_progress
 from route_info import (
     set_checked_flightroute,
     get_recent_callsigns,
     increase_error_count,
 )
-import airport_data
+import flight_data_source
 
 logging.basicConfig(level=logging.INFO)
 redis_connection = redis.Redis(decode_responses=True)
 
 
-def process_airport(airport: airport_data.Airport) -> None:
-    for _flight in _airport.get_active_flights(utc):
+def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
+    for _flight in data_source.get_active_flights(utc):
         if _flight.get("status") == "cancelled":
             logging.debug("skipping cancelled flight: {_flight}")
             continue
         _airline_icao = _flight.get("airline_icao")
         if _airline_icao is None:
-            logging.warning("airline_icao is missing: {_flight}")
+            logging.warning(f"airline_icao is missing: {_flight}")
             continue
         _key = "{}_{}_{}".format(
             _flight.get("airline_iata"),
@@ -85,8 +86,11 @@ def process_airport(airport: airport_data.Airport) -> None:
                         )
                     )
             else:
-                logging.warning(
-                    "check failed for: {} {}".format(_callsign, check_result)
+                logging.warning(f"check failed for: {_callsign}")
+                logging.debug(
+                    "check failed for: {} {} {}".format(
+                        _callsign, check_result, active_flights[_callsign]
+                    )
                 )
                 increase_error_count(_callsign, _flight["route"])
             continue
@@ -101,6 +105,12 @@ def process_airport(airport: airport_data.Airport) -> None:
             _check_result = route_check_simple(
                 active_flights[_candidate], _flight["route"]
             )
+            if _check_result is None:
+                logging.warning(
+                    "check not possible for {} {}".format(
+                        active_flights[_candidate], _flight
+                    )
+                )
             if _check_result["check_failed"] == True:
                 redis_connection.sadd(f"failed_candidates:{_key}", _candidate)
                 redis_connection.expire(f"failed_candidates:{_key}", 24 * 3600)
@@ -114,8 +124,9 @@ def process_airport(airport: airport_data.Airport) -> None:
             _candidates = redis_connection.sdiff(
                 f"candidates:{_key}", f"failed_candidates:{_key}"
             ).difference(recent_callsigns)
-            if len(_candidates) > 0:
+            if 2 > len(_candidates) > 0 and translated_callsign is None:
                 print(
+                    f"{_flight['airline_iata']}{_flight['flight_number']}",
                     assumed_callsign,
                     translated_callsign,
                     round(_time_progress, 2),
@@ -130,8 +141,10 @@ if __name__ == "__main__":
         fmo_data.Airport(),
         ham_data.Airport(),
         avinor_data.Airport(),
+        lh_cargo_data.Airline(),
     ]
     while True:
+        t_start = time.time()
         recent_callsigns = get_recent_callsigns()
         opensky_data = json.loads(redis_connection.get("opensky_positions"))
         active_flights = opensky_data["positions"]
@@ -143,5 +156,9 @@ if __name__ == "__main__":
         )
         for _airport in airports:
             process_airport(_airport)
-        logging.info("### sleeping for 45 seconds. ###")
-        time.sleep(45)
+        t_end = time.time()
+        processing_time = t_end - t_start
+        logging.info(f"processing time: {processing_time:.2f}s")
+        sleep_time = max((45 - processing_time), 0)
+        logging.info(f"### sleeping for {sleep_time:.2f} seconds. ###")
+        time.sleep(sleep_time)
