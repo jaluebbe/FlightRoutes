@@ -69,6 +69,8 @@ class Airport(flight_data_source.FlightDataSource):
                 continue
             _flight_number = int(_flight["flightnumber"][3:])
             _airline_name = _flight["airlineName"]
+            if _airline_name == "SmartLynx Airlines":
+                _airline_iata = "6Y"
             _airline_icao = get_airline_icao(
                 _airline_iata, _airline_name, _flight_number
             )
@@ -115,6 +117,8 @@ class Airport(flight_data_source.FlightDataSource):
                 continue
             _flight_number = int(_flight["flightnumber"][3:])
             _airline_name = _flight["airlineName"]
+            if _airline_name == "SmartLynx Airlines":
+                _airline_iata = "6Y"
             _airline_icao = get_airline_icao(
                 _airline_iata, _airline_name, _flight_number
             )
