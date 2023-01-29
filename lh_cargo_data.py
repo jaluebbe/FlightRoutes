@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 import csv
+import logging
 import arrow
 from airport_info import get_airport_info, get_airport_icao
 from airline_info import get_airline_icao
@@ -8,15 +10,17 @@ _day_labels = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
 
 def _process_flight(flight, utc):
-    if flight["ACtype"] in [
-        "RFC",
-        "RFS",
-    ]:
+    if flight["ACtype"] in ["RFC", "RFS"]:
         # ignore truck services
         return
     airline_iata = flight["AL"]
     flight_number = int(flight["FNR"][2:])
     airline_icao = get_airline_icao(airline_iata, flight_number=flight_number)
+    if airline_iata == "4Y":
+        airline_icao = "OCN"
+    if airline_icao is None:
+        logging.warning(f"Airline ICAO for {airline_iata} not found.")
+        return
     origin_icao = get_airport_icao(flight["DEP"])
     destination_icao = get_airport_icao(flight["ARR"])
     origin_info = get_airport_info(origin_icao)
@@ -34,13 +38,11 @@ def _process_flight(flight, utc):
         return
     _departure_date = utc.shift(days=int(flight["DDC"])).format("YYYYMMDD")
     _departure = arrow.get(
-        f"{_departure_date}T{flight['STD']}",
-        tzinfo=origin_info["Timezone"],
+        f"{_departure_date}T{flight['STD']}", tzinfo=origin_info["Timezone"]
     )
     _arrival_date = utc.shift(days=int(flight["ADC"])).format("YYYYMMDD")
     _arrival = arrow.get(
-        f"{_arrival_date}T{flight['STD']}",
-        tzinfo=destination_info["Timezone"],
+        f"{_arrival_date}T{flight['STD']}", tzinfo=destination_info["Timezone"]
     )
     _route = f"{origin_icao}-{destination_icao}"
     return {
@@ -88,8 +90,11 @@ class Airline(flight_data_source.FlightDataSource):
         _filtered_flights = [
             _flight
             for _flight in _flights
-            if (_flight["airline_iata"], _flight["flight_number"])
-            not in multiple_segments
+            if not (
+                (_flight["airline_iata"], _flight["flight_number"])
+                in multiple_segments
+                and _flight["segment_number"] == 0
+            )
         ]
         for _flight in _filtered_flights:
             self.mycol.update_one(
