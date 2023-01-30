@@ -46,3 +46,6 @@ class FlightDataSource:
             if _in_bounds(_flight, utc)
         ]
         return flights
+
+    def get_supported_airlines(self):
+        return self.mycol.distinct("airline_icao")

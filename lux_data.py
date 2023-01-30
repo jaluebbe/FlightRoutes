@@ -128,6 +128,8 @@ class Airport(flight_data_source.FlightDataSource):
         departing_flight_numbers = set()
         for _flight in data["arrivals"]:
             _airline_iata = _flight["flightNumber"][0:2]
+            if not _flight["flightNumber"][2:].isdigit():
+                continue
             _flight_number = int(_flight["flightNumber"][2:])
             _airline_name = _flight["airlineName"]
             arriving_flight_numbers.add(
@@ -178,6 +180,8 @@ class Airport(flight_data_source.FlightDataSource):
                     )
         for _flight in data["departures"]:
             _airline_iata = _flight["flightNumber"][0:2]
+            if not _flight["flightNumber"][2:].isdigit():
+                continue
             _flight_number = int(_flight["flightNumber"][2:])
             _airline_name = _flight["airlineName"]
             departing_flight_numbers.add(

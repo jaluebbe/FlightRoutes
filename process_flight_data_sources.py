@@ -86,7 +86,9 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
                         )
                     )
             else:
-                logging.warning(f"check failed for: {_callsign}")
+                logging.warning(
+                    f"check failed for: {_callsign} {_flight['route']}"
+                )
                 logging.debug(
                     "check failed for: {} {} {}".format(
                         _callsign, check_result, active_flights[_callsign]
@@ -143,11 +145,21 @@ if __name__ == "__main__":
         avinor_data.Airport(),
         lh_cargo_data.Airline(),
     ]
+    supported_airlines = set()
     while True:
         t_start = time.time()
+        for _airport in airports:
+            supported_airlines.update(_airport.get_supported_airlines())
         recent_callsigns = get_recent_callsigns()
         opensky_data = json.loads(redis_connection.get("opensky_positions"))
         active_flights = opensky_data["positions"]
+        for _flight in active_flights.values():
+            operator_icao = _flight["operator_icao"]
+            if operator_icao not in supported_airlines:
+                continue
+            redis_connection.sadd(
+                f"aircraft_icao24s:{operator_icao}", _flight["icao24"]
+            )
         utc = opensky_data["states_time"]
         logging.info(
             "### UTC {} ###".format(

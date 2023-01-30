@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import csv
 import logging
 import arrow
@@ -6,6 +7,7 @@ from airport_info import get_airport_info, get_airport_icao
 from airline_info import get_airline_icao
 import flight_data_source
 
+PWD = os.path.dirname(os.path.abspath(__file__))
 _day_labels = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
 
@@ -59,7 +61,7 @@ def _process_flight(flight, utc):
 
 def extract_flights_from_csv(utc):
     file_name = "LHcargo_FlightSchedule.csv"
-    with open(file_name) as f:
+    with open(os.path.join(PWD, file_name)) as f:
         _reader = csv.reader(f, delimiter=";")
         _schedule_date = next(_reader)
         _header = next(_reader)
