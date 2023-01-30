@@ -16,10 +16,10 @@ def _in_bounds(flight, utc):
 
 
 class FlightDataSource:
-    def __init__(self, source: str):
+    def __init__(self, source: str, category: str = "airports"):
         self.source = source
         self.myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-        self.mydb = self.myclient["airports"]
+        self.mydb = self.myclient[category]
         self.mycol = self.mydb[self.source.lower()]
 
     def update_data(self):
