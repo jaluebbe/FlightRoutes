@@ -49,3 +49,8 @@ class FlightDataSource:
 
     def get_supported_airlines(self):
         return self.mycol.distinct("airline_icao")
+
+    def update_flight(self, flight):
+        self.mycol.update_one(
+            {"_id": flight["_id"]}, {"$set": flight}, upsert=True
+        )
