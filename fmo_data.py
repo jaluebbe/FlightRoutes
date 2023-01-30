@@ -70,9 +70,7 @@ class Airport(flight_data_source.FlightDataSource):
                 _fmo_flight["status"] = _status_codes[_status_code]
             elif _status_code is not None:
                 _fmo_flight["status"] = _status_code
-            self.mycol.update_one(
-                {"_id": _fmo_flight["_id"]}, {"$set": _fmo_flight}, upsert=True
-            )
+            self.update_flight(_fmo_flight)
 
 
 if __name__ == "__main__":

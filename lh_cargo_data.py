@@ -99,9 +99,7 @@ class Airline(flight_data_source.FlightDataSource):
             )
         ]
         for _flight in _filtered_flights:
-            self.mycol.update_one(
-                {"_id": _flight["_id"]}, {"$set": _flight}, upsert=True
-            )
+            self.update_flight(_flight)
 
 
 if __name__ == "__main__":

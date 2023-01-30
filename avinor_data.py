@@ -164,9 +164,7 @@ class Airport(flight_data_source.FlightDataSource):
     def update_data(self):
         for _airport_iata in avinor_airports_iata:
             for _flight in request_airport_data(_airport_iata):
-                self.mycol.update_one(
-                    {"_id": _flight["_id"]}, {"$set": _flight}, upsert=True
-                )
+                self.update_flight(_flight)
 
 
 if __name__ == "__main__":

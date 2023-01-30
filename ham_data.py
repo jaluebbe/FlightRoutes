@@ -108,9 +108,7 @@ class Airport(flight_data_source.FlightDataSource):
                 _ham_flight["diverted"] = True
             if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
                 _ham_flight["overlap"] = True
-            self.mycol.update_one(
-                {"_id": _ham_flight["_id"]}, {"$set": _ham_flight}, upsert=True
-            )
+            self.update_flight(_ham_flight)
         for _flight in data["departures"]:
             _airline_iata = _flight["airline2LCode"]
             if _airline_iata is None:
@@ -158,9 +156,7 @@ class Airport(flight_data_source.FlightDataSource):
                 _ham_flight["diverted"] = True
             if _flight["flightnumber"] in data["overlapping_flight_numbers"]:
                 _ham_flight["overlap"] = True
-            self.mycol.update_one(
-                {"_id": _ham_flight["_id"]}, {"$set": _ham_flight}, upsert=True
-            )
+            self.update_flight(_ham_flight)
 
 
 if __name__ == "__main__":
