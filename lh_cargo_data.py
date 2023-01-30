@@ -74,7 +74,7 @@ def extract_flights_from_csv(utc):
 
 class Airline(flight_data_source.FlightDataSource):
     def __init__(self):
-        super().__init__("LH_Cargo")
+        super().__init__("LH_Cargo", category="airlines")
 
     def update_data(self, utc=None):
         if utc is None:
