@@ -14,6 +14,7 @@ An estimate for flight routes is available via the
 
 [Aircraft database](https://opensky-network.org/aircraft-database) (no registration required for read-access).
 
+The [Historical database](https://opensky-network.org/data/impala) is available for researchers on request.
 
 ### OurAirports
 [World wide airport information](https://ourairports.com/data/) as public domain data.
