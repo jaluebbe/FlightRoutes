@@ -29,6 +29,7 @@ _status_codes = {
     "ARR": "arrived",
     "DLY": "delayed",
     "CXXT": "cancelled",
+    "CXXO": "cancelled",
 }
 
 
