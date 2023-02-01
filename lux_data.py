@@ -107,6 +107,7 @@ class Airport(flight_data_source.FlightDataSource):
             "2": "delayed",
             "3": "taxiing",
             "4": "scheduled",
+            "7": "diverted",
             "8": "cancelled",
             "9": "expected",
             "10": "take off",
