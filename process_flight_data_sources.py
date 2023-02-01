@@ -16,10 +16,11 @@ from route_info import (
     increase_error_count,
 )
 import flight_data_source
-import opensky_flights_info as ofi
+from opensky_flights_info import OpenSkyFlights
 
 logging.basicConfig(level=logging.INFO)
 redis_connection = redis.Redis(decode_responses=True)
+osf = OpenSkyFlights()
 
 
 def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
@@ -141,7 +142,7 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
             _filtered_candidates = [
                 _c
                 for _c in _candidates
-                if ofi.get_routes_by_callsign(_c) == _flight["route"]
+                if osf.get_routes_by_callsign(_c) == _flight["route"]
             ]
             if len(_filtered_candidates) == 1:
                 _quality = 1
@@ -183,6 +184,7 @@ if __name__ == "__main__":
         avinor_data.Airport(),
         lh_cargo_data.Airline(),
     ]
+
     supported_airlines = set()
     while True:
         t_start = time.time()
