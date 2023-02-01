@@ -16,6 +16,7 @@ from route_info import (
     increase_error_count,
 )
 import flight_data_source
+import opensky_flights_info as ofi
 
 logging.basicConfig(level=logging.INFO)
 redis_connection = redis.Redis(decode_responses=True)
@@ -43,9 +44,10 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
         )
         _callsign = None
         _quality = 0
+        # This is the most simple way to match callsign and flight.
         if assumed_callsign in active_flights:
             _callsign = assumed_callsign
-            _quality = 2
+            _quality = 5
         elif assumed_callsign in recent_callsigns:
             logging.debug(
                 "not (found) in the air: {} {}".format(
@@ -55,9 +57,10 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
             continue
         elif translated_callsign is None:
             pass
+        # The translation table needs manual maintenance.
         elif translated_callsign in active_flights:
             _callsign = translated_callsign
-            _quality = 1
+            _quality = 3
         elif translated_callsign in recent_callsigns:
             logging.debug(
                 "not (found) in the air: {} {}".format(
@@ -66,9 +69,12 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
             )
             continue
         if _callsign is not None:
+            # We need to validate our match.
             check_result = route_check_simple(
                 active_flights[_callsign], _flight["route"]
             )
+            if check_result is None:
+                continue
             if not check_result["check_failed"]:
                 _flight["callsign"] = _callsign
                 _flight["source"] = _airport.source
@@ -98,11 +104,14 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
             continue
         _my_progress = float("nan")
         _time_progress = estimate_progress(_flight, utc)
-
+        # At this point, we compare aircraft positions of the target operator
+        # to the wanted flight.
         for _candidate in active_flights:
             if _candidate[:3] != _airline_icao:
                 continue
             if _candidate in recent_callsigns:
+                # If a simple fit for this flight has been seen recently,
+                # we skip the following process.
                 continue
             _check_result = route_check_simple(
                 active_flights[_candidate], _flight["route"]
@@ -113,6 +122,7 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
                         active_flights[_candidate], _flight
                     )
                 )
+                continue
             if _check_result["check_failed"] == True:
                 redis_connection.sadd(f"failed_candidates:{_key}", _candidate)
                 redis_connection.expire(f"failed_candidates:{_key}", 24 * 3600)
@@ -126,7 +136,34 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
             _candidates = redis_connection.sdiff(
                 f"candidates:{_key}", f"failed_candidates:{_key}"
             ).difference(recent_callsigns)
-            if 2 > len(_candidates) > 0 and translated_callsign is None:
+            # We check if any of the candidates was recently detected with the
+            # desired flight route by OpenSky Network's processing.
+            _filtered_candidates = [
+                _c
+                for _c in _candidates
+                if ofi.get_routes_by_callsign(_c) == _flight["route"]
+            ]
+            if len(_filtered_candidates) == 1:
+                _quality = 1
+                _callsign = _filtered_candidates[0]
+                _flight["callsign"] = _callsign
+                _flight["source"] = _airport.source
+                set_checked_flightroute(_flight, quality=_quality)
+                if _callsign in recent_callsigns:
+                    logging.debug(
+                        "updating flight in database: {} {}".format(
+                            _callsign, _flight["route"]
+                        )
+                    )
+                else:
+                    logging.info(
+                        "added flight to database: {} {}".format(
+                            _callsign, _flight["route"]
+                        )
+                    )
+                continue
+            # At this point, additional input is required to match this flight.
+            if 6 > len(_candidates) > 0 and translated_callsign is None:
                 print(
                     f"{_flight['airline_iata']}{_flight['flight_number']}",
                     assumed_callsign,
@@ -134,6 +171,7 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
                     round(_time_progress, 2),
                     _flight["route"],
                     _candidates,
+                    _filtered_candidates,
                 )
 
 
