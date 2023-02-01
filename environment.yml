@@ -1,7 +1,6 @@
 name: flightroutes
 dependencies:
   - requests
-  - requests-cache
   - redis
   - pymongo
   - arrow

@@ -1,8 +1,9 @@
-redis
 requests
-numpy
+redis
 pymongo
 arrow
-xmltodict
 timezonefinder
+xmltodict
+numpy
 PyGeodesy
+free-proxy
