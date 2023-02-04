@@ -16,7 +16,8 @@ from route_info import (
 )
 import flight_data_source
 from opensky_flights_info import OpenSkyFlights
-import vrs_standing_data as vsa
+import vrs_standing_data as vsd
+import pp_flightroute_data as pfd
 
 logging.basicConfig(level=logging.INFO)
 redis_connection = redis.Redis(decode_responses=True)
@@ -143,7 +144,8 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
                 _c
                 for _c in _candidates
                 if osf.get_routes_by_callsign(_c) == _flight["route"]
-                or vsa.get_flight_route(_c) == _flight["route"]
+                or vsd.get_flight_route(_c) == _flight["route"]
+                or pfd.get_flight_route(_c) == _flight["route"]
             ]
             if len(_filtered_candidates) == 1:
                 _quality = 1
