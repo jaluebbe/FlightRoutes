@@ -1,8 +1,10 @@
 import re
+import os
 import json
 import redis
 import requests
 
+PWD = os.path.dirname(os.path.abspath(__file__))
 redis_connection = redis.Redis(decode_responses=True)
 
 # regexp checking for callsign similarity rules
@@ -18,7 +20,7 @@ icao24_to_registration = {}
 
 # Call this method to load an updated version of icao24_to_registration.json .
 def reload_icao24_to_registration():
-    _data = json.load(open("icao24_to_registration.json"))
+    _data = json.load(open(os.path.join(PWD, "icao24_to_registration.json")))
     icao24_to_registration.clear()
     icao24_to_registration.update(_data)
 
@@ -28,7 +30,7 @@ def update_icao24s_from_redis():
 
 
 def dump_icao24_to_registration():
-    with open("icao24_to_registration.json", "w") as f:
+    with open(os.path.join(PWD, "icao24_to_registration.json"), "w") as f:
         json.dump(icao24_to_registration, f)
 
 

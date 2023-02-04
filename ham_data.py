@@ -67,6 +67,8 @@ class Airport(flight_data_source.FlightDataSource):
             _airline_iata = _flight["airline2LCode"]
             if _airline_iata is None:
                 continue
+            if not _flight["flightnumber"][3:].isdigit():
+                continue
             _flight_number = int(_flight["flightnumber"][3:])
             _airline_name = _flight["airlineName"]
             if _airline_name == "SmartLynx Airlines":
@@ -112,6 +114,8 @@ class Airport(flight_data_source.FlightDataSource):
         for _flight in data["departures"]:
             _airline_iata = _flight["airline2LCode"]
             if _airline_iata is None:
+                continue
+            if not _flight["flightnumber"][3:].isdigit():
                 continue
             _flight_number = int(_flight["flightnumber"][3:])
             _airline_name = _flight["airlineName"]
