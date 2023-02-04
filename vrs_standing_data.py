@@ -6,12 +6,6 @@ import sqlite3
 PWD = os.path.dirname(os.path.abspath(__file__))
 ROUTES_DB_FILE = f"{PWD}/vrs_routes.sqb"
 
-_sql_key_translation = {
-    "Callsign": "callsign",
-    "Route": "route",
-    "OperatorIcao": "operator_icao",
-}
-
 
 def refresh_database():
     db_connection = sqlite3.connect(ROUTES_DB_FILE)
@@ -43,12 +37,11 @@ def refresh_database():
     db_connection.close()
 
 
-def get_flightroute(callsign: str) -> dict:
+def get_flight_route(callsign: str) -> dict:
     connection = sqlite3.connect(ROUTES_DB_FILE)
-    connection.row_factory = sqlite3.Row
     _cursor = connection.cursor()
     _cursor.execute(
-        "SELECT * from flight_routes WHERE Callsign=?",
+        "SELECT Route from flight_routes WHERE Callsign=?",
         (callsign,),
     )
     result = _cursor.fetchone()
@@ -56,10 +49,7 @@ def get_flightroute(callsign: str) -> dict:
     connection.close()
     if result is None:
         return None
-    result = dict(result)
-    for old_key, new_key in _sql_key_translation.items():
-        result[new_key] = result.pop(old_key)
-    return result
+    return result[0]
 
 
 if __name__ == "__main__":
