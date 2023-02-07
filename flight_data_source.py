@@ -47,6 +47,35 @@ class FlightDataSource:
         ]
         return flights
 
+    def get_flights_of_day(self, date=None):
+        if date is None:
+            _begin = arrow.utcnow().floor("day")
+        else:
+            _begin = arrow.get(date).floor("day")
+        _end = _begin.ceil("day")
+        flights = [
+            _flight
+            for _flight in self.mycol.find(
+                {
+                    "$or": [
+                        {
+                            "departure": {
+                                "$gt": _begin.timestamp(),
+                                "$lt": _end.timestamp(),
+                            }
+                        },
+                        {
+                            "arrival": {
+                                "$gt": _begin.timestamp(),
+                                "$lt": _end.timestamp(),
+                            }
+                        },
+                    ]
+                }
+            )
+        ]
+        return flights
+
     def get_supported_airlines(self):
         return self.mycol.distinct("airline_icao")
 
