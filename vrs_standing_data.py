@@ -2,6 +2,7 @@ import os
 import glob
 import csv
 import sqlite3
+from opensky_utils import validated_callsign
 
 PWD = os.path.dirname(os.path.abspath(__file__))
 ROUTES_DB_FILE = f"{PWD}/vrs_routes.sqb"
@@ -19,6 +20,9 @@ def refresh_database():
         with open(os.path.join(PWD, "vrs_routes.sql"), encoding="utf-8") as f:
             db_connection.executescript(f.read())
     for _file_name in glob.glob("../standing-data/routes/schema-01/*/*.csv"):
+        _callsign = validated_callsign(_row["Callsign"])
+        if _callsign is None:
+            continue
         with open(_file_name, encoding="utf-8-sig") as csv_file:
             reader = csv.DictReader(csv_file)
             for _row in reader:
@@ -26,7 +30,7 @@ def refresh_database():
                     "REPLACE INTO flight_routes(Callsign, OperatorIcao, Route)"
                     " VALUES(?, ?, ?)",
                     (
-                        _row["Callsign"],
+                        _callsign,
                         _row["AirlineCode"],
                         _row["AirportCodes"],
                     ),
