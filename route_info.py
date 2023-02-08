@@ -1,6 +1,7 @@
 import os
 import time
 import sqlite3
+import logging
 from config import OUTDATED
 
 PWD = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +62,17 @@ def set_checked_flightroute(
             valid_from = old_flight["valid_from"]
             if not reset_errors:
                 errors = old_flight["errors"]
+        logging.debug(
+            "updating flight in database: {} {}".format(
+                flight["callsign"], flight["route"]
+            )
+        )
+    else:
+        logging.info(
+            "added flight to database: {} {}".format(
+                flight["callsign"], flight["route"]
+            )
+        )
     connection = sqlite3.connect(ROUTES_DB_FILE)
     connection.row_factory = sqlite3.Row
     _cursor = connection.cursor()
