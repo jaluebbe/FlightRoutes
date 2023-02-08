@@ -20,6 +20,8 @@ class OpenSkyFlights:
         self.myclient = pymongo.MongoClient("mongodb://localhost:27017/")
         self.mydb = self.myclient["opensky"]
         self.mycol = self.mydb["flights"]
+        if "callsign_1" not in self.mycol.index_information():
+            mycol.create_index("callsign")
         self.redis_connection = redis.Redis(decode_responses=True)
 
     def get_routes_by_callsign(self, callsign):

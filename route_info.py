@@ -1,6 +1,7 @@
 import os
 import time
 import sqlite3
+import logging
 from config import OUTDATED
 
 PWD = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +62,17 @@ def set_checked_flightroute(
             valid_from = old_flight["valid_from"]
             if not reset_errors:
                 errors = old_flight["errors"]
+        logging.debug(
+            "updating flight in database: {} {}".format(
+                flight["callsign"], flight["route"]
+            )
+        )
+    else:
+        logging.info(
+            "added flight to database: {} {}".format(
+                flight["callsign"], flight["route"]
+            )
+        )
     connection = sqlite3.connect(ROUTES_DB_FILE)
     connection.row_factory = sqlite3.Row
     _cursor = connection.cursor()
@@ -104,6 +116,26 @@ def get_checked_flightroute(callsign: str, route: str) -> dict:
     for old_key, new_key in _sql_key_translation.items():
         result[new_key] = result.pop(old_key)
     return result
+
+
+def get_flights_by_number(operator_iata: str, flight_number: int) -> list[dict]:
+    connection = sqlite3.connect(ROUTES_DB_FILE)
+    connection.row_factory = sqlite3.Row
+    _cursor = connection.cursor()
+    _cursor.execute(
+        "SELECT * from flight_routes WHERE OperatorIata=? AND FlightNumber=?",
+        (operator_iata, flight_number),
+    )
+    results = _cursor.fetchall()
+    _cursor.close()
+    connection.close()
+    if results is None:
+        return []
+    results = [dict(_row) for _row in results]
+    for _result in results:
+        for old_key, new_key in _sql_key_translation.items():
+            _result[new_key] = _result.pop(old_key)
+    return results
 
 
 def reset_error_count(callsign: str, route: str) -> None:
