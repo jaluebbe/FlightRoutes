@@ -24,7 +24,21 @@ redis_connection = redis.Redis(decode_responses=True)
 osf = OpenSkyFlights()
 
 
-def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
+def _filter_candidates(candidates, route):
+    # We check if any of the candidates was recently detected with the
+    # desired flight route by OpenSky Network's processing.
+    return [
+        _callsign
+        for _callsign in candidates
+        if osf.get_routes_by_callsign(_callsign) == route
+        or vsd.get_flight_route(_callsign) == route
+        or pfd.get_flight_route(_callsign) == route
+    ]
+
+
+def process_data_source(
+    data_source: flight_data_source.FlightDataSource
+) -> None:
     for _flight in data_source.get_active_flights(utc):
         if _flight.get("status") == "cancelled":
             logging.debug("skipping cancelled flight: {_flight}")
@@ -79,20 +93,8 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
                 continue
             if not check_result["check_failed"]:
                 _flight["callsign"] = _callsign
-                _flight["source"] = _airport.source
+                _flight["source"] = _data_source.source
                 set_checked_flightroute(_flight, quality=_quality)
-                if _callsign in recent_callsigns:
-                    logging.debug(
-                        "updating flight in database: {} {}".format(
-                            _callsign, _flight["route"]
-                        )
-                    )
-                else:
-                    logging.info(
-                        "added flight to database: {} {}".format(
-                            _callsign, _flight["route"]
-                        )
-                    )
             else:
                 logging.warning(
                     f"check failed for: {_callsign} {_flight['route']}"
@@ -135,52 +137,39 @@ def process_airport(data_source: flight_data_source.FlightDataSource) -> None:
                     redis_connection.sadd(f"candidates:{_key}", _candidate)
                     redis_connection.expire(f"candidates:{_key}", 24 * 3600)
         if 1 > _time_progress > 0.1:
-            _candidates = redis_connection.sdiff(
+            _first_choice = redis_connection.sdiff(
                 f"candidates:{_key}", f"failed_candidates:{_key}"
             ).difference(recent_callsigns)
-            # We check if any of the candidates was recently detected with the
-            # desired flight route by OpenSky Network's processing.
-            _filtered_candidates = [
-                _c
-                for _c in _candidates
-                if osf.get_routes_by_callsign(_c) == _flight["route"]
-                or vsd.get_flight_route(_c) == _flight["route"]
-                or pfd.get_flight_route(_c) == _flight["route"]
-            ]
-            if len(_filtered_candidates) == 1:
+            _second_choice = (
+                redis_connection.smembers(f"candidates:{_key}")
+                .difference(recent_callsigns)
+                .difference(_first_choice)
+            )
+            _first_candidates = _filter_candidates(
+                _first_choice, _flight["route"]
+            )
+            if len(_first_candidates) == 1:
                 _quality = 1
-                _callsign = _filtered_candidates[0]
+                _callsign = _first_candidates[0]
                 _flight["callsign"] = _callsign
-                _flight["source"] = _airport.source
+                _flight["source"] = _data_source.source
                 set_checked_flightroute(_flight, quality=_quality)
-                if _callsign in recent_callsigns:
-                    logging.debug(
-                        "updating flight in database: {} {}".format(
-                            _callsign, _flight["route"]
-                        )
-                    )
-                else:
-                    logging.info(
-                        "added flight to database: {} {}".format(
-                            _callsign, _flight["route"]
-                        )
-                    )
                 continue
-            # At this point, additional input is required to match this flight.
-            if 6 > len(_candidates) > 0 and translated_callsign is None:
-                print(
-                    f"{_flight['airline_iata']}{_flight['flight_number']}",
-                    assumed_callsign,
-                    translated_callsign,
-                    round(_time_progress, 2),
-                    _flight["route"],
-                    _candidates,
-                    _filtered_candidates,
+            elif len(_first_candidates) == 0:
+                _second_candidates = _filter_candidates(
+                    _second_choice, _flight["route"]
                 )
+                if len(_second_candidates) == 1:
+                    _quality = 0
+                    _callsign = _second_candidates[0]
+                    _flight["callsign"] = _callsign
+                    _flight["source"] = _data_source.source
+                    set_checked_flightroute(_flight, quality=_quality)
+                    continue
 
 
 if __name__ == "__main__":
-    airports = [
+    data_sources = [
         fmo_data.Airport(),
         ham_data.Airport(),
         avinor_data.Airport(),
@@ -190,10 +179,14 @@ if __name__ == "__main__":
     supported_airlines = set()
     while True:
         t_start = time.time()
-        for _airport in airports:
-            supported_airlines.update(_airport.get_supported_airlines())
+        for _data_source in data_sources:
+            supported_airlines.update(_data_source.get_supported_airlines())
         recent_callsigns = get_recent_callsigns()
-        opensky_data = json.loads(redis_connection.get("opensky_positions"))
+        opensky_data = redis_connection.get("opensky_positions")
+        if opensky_data is None:
+            time.sleep(5)
+            continue
+        opensky_data = json.loads(opensky_data)
         active_flights = opensky_data["positions"]
         for _flight in active_flights.values():
             operator_icao = _flight["operator_icao"]
@@ -208,8 +201,8 @@ if __name__ == "__main__":
                 arrow.get(utc).format("YYYY-MM-DD HH:mm:ss")
             )
         )
-        for _airport in airports:
-            process_airport(_airport)
+        for _data_source in data_sources:
+            process_data_source(_data_source)
         t_end = time.time()
         processing_time = t_end - t_start
         logging.info(f"processing time: {processing_time:.2f}s")
