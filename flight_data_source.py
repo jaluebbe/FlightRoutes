@@ -21,6 +21,10 @@ class FlightDataSource:
         self.myclient = pymongo.MongoClient("mongodb://localhost:27017/")
         self.mydb = self.myclient[category]
         self.mycol = self.mydb[self.source.lower()]
+        if "departure_1" not in self.mycol.index_information():
+            self.mycol.create_index("departure")
+        if "arrival_1" not in self.mycol.index_information():
+            self.mycol.create_index("arrival")
 
     def update_data(self):
         pass
