@@ -56,7 +56,7 @@ def _process_flight(flight, utc):
         "flight_number": flight_number,
         "route": _route,
         "departure": int(_departure.timestamp()),
-        "arival": int(_arrival.timestamp()),
+        "arrival": int(_arrival.timestamp()),
         "segment_number": int(flight["SNR"]),
     }
 
