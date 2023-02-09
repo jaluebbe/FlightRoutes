@@ -74,8 +74,10 @@ def validated_callsign(
     if accepted_operators is not None and operator not in accepted_operators:
         return None
     response = {"callsign": callsign, "operator_icao": operator}
-    if suffix.isdigit() and allow_numerical_callsign:
+    if allow_numerical_callsign and suffix.isdigit():
         response["callsign_number"] = int(suffix)
+    elif not allow_numerical_callsign and suffix.isdigit():
+        return None
     elif allow_alphanumerical_callsign:
         pass
     else:
