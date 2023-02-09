@@ -8,6 +8,7 @@ import fmo_data
 import ham_data
 import avinor_data
 import lh_cargo_data
+import anac_data
 from route_utils import route_check_simple, estimate_progress
 from route_info import (
     set_checked_flightroute,
@@ -174,6 +175,7 @@ if __name__ == "__main__":
         ham_data.Airport(),
         avinor_data.Airport(),
         lh_cargo_data.Airline(),
+        anac_data.Agency(),
     ]
 
     supported_airlines = set()
