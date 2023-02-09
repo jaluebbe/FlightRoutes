@@ -21,7 +21,7 @@ class OpenSkyFlights:
         self.mydb = self.myclient["opensky"]
         self.mycol = self.mydb["flights"]
         if "callsign_1" not in self.mycol.index_information():
-            mycol.create_index("callsign")
+            self.mycol.create_index("callsign")
         self.redis_connection = redis.Redis(decode_responses=True)
 
     def get_routes_by_callsign(self, callsign):
@@ -78,6 +78,34 @@ class OpenSkyFlights:
                     continue
                 self._process_flights(_response.json())
 
+    def get_flights_of_day(self, date=None):
+        if date is None:
+            _begin = arrow.utcnow().shift(days=-1).floor("day")
+        else:
+            _begin = arrow.get(date).floor("day")
+        _end = _begin.ceil("day")
+        flights = [
+            _flight
+            for _flight in self.mycol.find(
+                {
+                    "$or": [
+                        {
+                            "first_seen": {
+                                "$gt": _begin.timestamp(),
+                                "$lt": _end.timestamp(),
+                            }
+                        },
+                        {
+                            "last_seen": {
+                                "$gt": _begin.timestamp(),
+                                "$lt": _end.timestamp(),
+                            }
+                        },
+                    ]
+                }
+            )
+        ]
+        return flights
 
 if __name__ == "__main__":
     osf = OpenSkyFlights()
