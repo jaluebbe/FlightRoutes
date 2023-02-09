@@ -16,6 +16,8 @@ def _process_flight(flight, utc):
         # ignore truck services
         return
     airline_iata = flight["AL"]
+    if not flight["FNR"][2:].isdigit():
+        return
     flight_number = int(flight["FNR"][2:])
     airline_icao = get_airline_icao(airline_iata, flight_number=flight_number)
     if airline_iata == "4Y":
