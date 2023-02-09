@@ -33,6 +33,8 @@ class Agency(flight_data_source.FlightDataSource):
             _airline_icao = _row["Cód. Empresa"]
             _airline_iata = get_airline_iata(_airline_icao)
             _airline_name = _row["Empresa"]
+            if not _row["Nr. Voo"].isdigit():
+                continue
             _flight_number = int(_row["Nr. Voo"])
             _segment_number = int(_row["Nr. Etapa"])
             _origin = _row["Cód Origem"]
