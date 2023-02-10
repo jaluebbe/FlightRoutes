@@ -41,6 +41,8 @@ Airports names but not their respective IATA codes are available.
 [Flight schedules in XML, XLSX, CSV and PDF format](https://lufthansa-cargo.com/de/network/schedule-routings)
 (no registration required).
 
+### Brazilian ANAC
+[Flight schedules in CSV format](https://siros.anac.gov.br/siros/registros/diario/diario.csv) (no registration required).
 
 ## Installation
 ```
