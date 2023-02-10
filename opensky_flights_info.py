@@ -27,7 +27,13 @@ class OpenSkyFlights:
     def get_routes_by_callsign(self, callsign):
         routes = {
             "-".join([_flight["origin"], _flight["destination"]])
-            for _flight in self.mycol.find({"callsign": callsign})
+            for _flight in self.mycol.find(
+                {
+                    "callsign": callsign,
+                    "origin": {"$exists": True},
+                    "destination": {"$exists": True},
+                }
+            )
         }
         if len(routes) != 1:
             logging.debug(f"multiple routes for {callsign}: {routes}")
@@ -46,18 +52,18 @@ class OpenSkyFlights:
             _first_seen = _flight["firstSeen"]
             _last_seen = _flight["lastSeen"]
             _icao24 = _flight["icao24"]
-            if None in (_origin, _destination):
-                continue
             _id = f"{_icao24}_{_first_seen}"
             _osn_flight = {
                 "callsign": _callsign,
                 "airline_icao": _operator,
-                "origin": _origin,
-                "destination": _destination,
                 "first_seen": _first_seen,
                 "last_seen": _last_seen,
                 "icao24": _icao24,
             }
+            if _origin is not None:
+                _osn_flight["origin"] = _origin
+            if _destination is not None:
+                _osn_flight["destination"] = _destination
             logging.debug(f"added flight: {_osn_flight}")
             self.mycol.update_one(
                 {"_id": _id}, {"$set": _osn_flight}, upsert=True
@@ -106,6 +112,7 @@ class OpenSkyFlights:
             )
         ]
         return flights
+
 
 if __name__ == "__main__":
     osf = OpenSkyFlights()
