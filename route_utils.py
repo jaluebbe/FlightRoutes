@@ -1,16 +1,31 @@
 import time
+import logging
 import numpy as np
 import arrow
-from pygeodesy.ellipsoidalVincenty import LatLon
+import pygeodesy.ellipsoidalVincenty as ev
+import pygeodesy.ellipsoidalExact as ee
 from airport_info import get_airport_info
 
 
 def get_single_route_length(origin_icao, destination_icao):
     origin = get_airport_info(origin_icao)
     destination = get_airport_info(destination_icao)
-    distance = LatLon(origin["Latitude"], origin["Longitude"]).distanceTo(
-        LatLon(destination["Latitude"], destination["Longitude"])
-    )
+    try:
+        distance = ev.LatLon(
+            origin["Latitude"], origin["Longitude"]
+        ).distanceTo(
+            ev.LatLon(destination["Latitude"], destination["Longitude"])
+        )
+    except ev.VincentyError:
+        # this method is much slower and being used as fallback only
+        distance = ee.LatLon(
+            origin["Latitude"], origin["Longitude"]
+        ).distanceTo(
+            ee.LatLon(destination["Latitude"], destination["Longitude"])
+        )
+        logging.exception(
+            f"get_single_route_length({origin_icao}, {destination_icao})"
+        )
     return distance
 
 
@@ -54,18 +69,39 @@ def single_route_check_simple(position, route):
         return None
     if origin == destination:
         return None
-    origin = LatLon(origin["Latitude"], origin["Longitude"])
-    destination = LatLon(destination["Latitude"], destination["Longitude"])
-    route_length = origin.distanceTo(destination)
     if None in [position["latitude"], position["longitude"]]:
         return None
-    position["LatLon"] = LatLon(position["latitude"], position["longitude"])
-    temp = origin.distanceTo3(position["LatLon"])
-    dist_origin = temp[0]
-    bearing_from_origin = temp[2]
-    temp = position["LatLon"].distanceTo3(destination)
-    dist_destination = temp[0]
-    bearing_to_destination = temp[1]
+    try:
+        origin = ev.LatLon(origin["Latitude"], origin["Longitude"])
+        destination = ev.LatLon(
+            destination["Latitude"], destination["Longitude"]
+        )
+        route_length = origin.distanceTo(destination)
+        position["LatLon"] = ev.LatLon(
+            position["latitude"], position["longitude"]
+        )
+        temp = origin.distanceTo3(position["LatLon"])
+        dist_origin = temp[0]
+        bearing_from_origin = temp[2]
+        temp = position["LatLon"].distanceTo3(destination)
+        dist_destination = temp[0]
+        bearing_to_destination = temp[1]
+    except ev.VincentyError:
+        origin = ee.LatLon(origin["Latitude"], origin["Longitude"])
+        destination = ee.LatLon(
+            destination["Latitude"], destination["Longitude"]
+        )
+        route_length = origin.distanceTo(destination)
+        position["LatLon"] = ee.LatLon(
+            position["latitude"], position["longitude"]
+        )
+        temp = origin.distanceTo3(position["LatLon"])
+        dist_origin = temp[0]
+        bearing_from_origin = temp[2]
+        temp = position["LatLon"].distanceTo3(destination)
+        dist_destination = temp[0]
+        bearing_to_destination = temp[1]
+        logging.exception(f"single_route_check_simple({position}, {route})")
     deviation = dist_origin + dist_destination - route_length
     altitude = position["altitude"]
     vertical_rate = position["vertical_rate"]
