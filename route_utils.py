@@ -72,33 +72,33 @@ def single_route_check_simple(position, route):
     if None in [position["latitude"], position["longitude"]]:
         return None
     try:
-        origin = ev.LatLon(origin["Latitude"], origin["Longitude"])
-        destination = ev.LatLon(
+        _origin = ev.LatLon(origin["Latitude"], origin["Longitude"])
+        _destination = ev.LatLon(
             destination["Latitude"], destination["Longitude"]
         )
-        route_length = origin.distanceTo(destination)
+        route_length = _origin.distanceTo(_destination)
         position["LatLon"] = ev.LatLon(
             position["latitude"], position["longitude"]
         )
-        temp = origin.distanceTo3(position["LatLon"])
+        temp = _origin.distanceTo3(position["LatLon"])
         dist_origin = temp[0]
         bearing_from_origin = temp[2]
-        temp = position["LatLon"].distanceTo3(destination)
+        temp = position["LatLon"].distanceTo3(_destination)
         dist_destination = temp[0]
         bearing_to_destination = temp[1]
     except ev.VincentyError:
-        origin = ee.LatLon(origin["Latitude"], origin["Longitude"])
-        destination = ee.LatLon(
+        _origin = ee.LatLon(origin["Latitude"], origin["Longitude"])
+        _destination = ee.LatLon(
             destination["Latitude"], destination["Longitude"]
         )
-        route_length = origin.distanceTo(destination)
+        route_length = _origin.distanceTo(_destination)
         position["LatLon"] = ee.LatLon(
             position["latitude"], position["longitude"]
         )
-        temp = origin.distanceTo3(position["LatLon"])
+        temp = _origin.distanceTo3(position["LatLon"])
         dist_origin = temp[0]
         bearing_from_origin = temp[2]
-        temp = position["LatLon"].distanceTo3(destination)
+        temp = position["LatLon"].distanceTo3(_destination)
         dist_destination = temp[0]
         bearing_to_destination = temp[1]
         logging.exception(f"single_route_check_simple({position}, {route})")
