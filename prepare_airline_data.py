@@ -39,20 +39,20 @@ for _row in _airlines:
         "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
         (_row["ICAO"], _row["IATA"], _row["Name"]),
     )
-for _airline in [
-]:
+for _airline in []:
     _cursor.execute(
         "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
         _airline,
     )
 for _icao_iata in [
-    ("EWA", "EW"),
-    ("STU", "FS"),
-    ("IBK", "D8"),
     ("IBZ", "6I"),
 ]:
     _cursor.execute("DELETE FROM airlines WHERE ICAO=? AND IATA=?", _icao_iata)
-_cursor.execute("UPDATE airlines SET IATA='' WHERE ICAO='AAB'")
+for _icao_iata in []:
+    _cursor.execute(
+        "UPDATE airlines SET IATA='' WHERE ICAO=? AND IATA=?", _icao_iata
+    )
+
 _cursor.close()
 db_connection.commit()
 db_connection.execute("VACUUM")
