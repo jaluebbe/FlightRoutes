@@ -52,7 +52,9 @@ for _icao_iata in []:
     _cursor.execute(
         "UPDATE airlines SET IATA='' WHERE ICAO=? AND IATA=?", _icao_iata
     )
-
+_cursor.execute(
+    "UPDATE airlines SET Name='Azul Conecta', IATA='2F' WHERE ICAO='ACN'"
+)
 _cursor.close()
 db_connection.commit()
 db_connection.execute("VACUUM")
