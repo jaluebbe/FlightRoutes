@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+from itertools import permutations
 import arrow
 import requests
 import xmltodict
@@ -93,10 +94,12 @@ def request_airport_data(airport_iata):
             operator_icao = "QFA"
         elif operator_iata == "BA":
             operator_icao = "BAW"
+        elif operator_iata == "NO":
+            operator_icao = "NOS"
         if None in (operator_icao, operator_iata):
             logger.warning(
-                "operator information incomplete {}, {}".format(
-                    operator_icao, operator_iata
+                "operator information incomplete {}, {}, {}".format(
+                    operator_icao, operator_iata, flight["flight_id"]
                 )
             )
             continue
@@ -162,8 +165,24 @@ class Airport(flight_data_source.FlightDataSource):
         super().__init__("Avinor")
 
     def update_data(self):
+        all_flights = {}
         for _airport_iata in avinor_airports_iata:
             for _flight in request_airport_data(_airport_iata):
+                _key = _flight["_id"].replace(_flight["route"], "")
+                all_flights.setdefault(_key, {})
+                all_flights[_key].setdefault(_flight["_id"], {})
+                all_flights[_key][_flight["_id"]].update(_flight)
+        for _flight_set in all_flights.values():
+            for _flight1, _flight2 in permutations(_flight_set.values(), 2):
+                if _flight2["route"] == _flight1["route"]:
+                    pass
+                elif _flight2["route"].startswith(_flight1["route"]):
+                    _flight1["redundant"] = True
+                elif _flight2["route"].endswith(_flight1["route"]):
+                    _flight1["redundant"] = True
+                elif _flight1["route"] in _flight2["route"]:
+                    _flight1["redundant"] = True
+            for _flight in _flight_set.values():
                 self.update_flight(_flight)
 
 
