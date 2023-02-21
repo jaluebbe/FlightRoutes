@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import redis
+import arrow
 from route_info import get_recent_callsigns
 from opensky_utils import validated_callsign
 from opensky_flights_info import OpenSkyFlights
@@ -9,9 +10,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     osf = OpenSkyFlights()
     redis_connection = redis.Redis(decode_responses=True)
-    recent_callsigns = get_recent_callsigns(min_quality=0, hours=24 * 7)
+    recent_callsigns = get_recent_callsigns(min_quality=0, hours=24 * 8)
     print("### missing flight mappings ###")
-    for _flight in osf.get_flights_of_day():
+    for _flight in osf.get_flights_of_day(arrow.utcnow().shift(days=-1)):
         _callsign = _flight["callsign"]
         if _callsign in recent_callsigns:
             continue
@@ -27,8 +28,8 @@ if __name__ == "__main__":
             continue
         if _callsign in redis_connection.hvals("callsign_translation"):
             continue
-        _origin = _flight["origin"]
-        _destination = _flight["destination"]
+        _origin = _flight.get("origin")
+        _destination = _flight.get("destination")
         _validated_input = validated_callsign(
             input(f"{_callsign:<7} {_origin}-{_destination} : "),
             allow_numerical_callsign=True,
