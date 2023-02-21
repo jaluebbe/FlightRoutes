@@ -36,6 +36,7 @@ class FlightDataSource:
             _flight
             for _flight in self.mycol.find(
                 {
+                    "redundant": {"$exists": False},
                     "$or": [
                         {
                             "departure": {
@@ -44,7 +45,7 @@ class FlightDataSource:
                             }
                         },
                         {"arrival": {"$gt": utc - 300, "$lt": utc + 24 * 3600}},
-                    ]
+                    ],
                 }
             )
             if _in_bounds(_flight, utc)
@@ -61,6 +62,7 @@ class FlightDataSource:
             _flight
             for _flight in self.mycol.find(
                 {
+                    "redundant": {"$exists": False},
                     "$or": [
                         {
                             "departure": {
@@ -74,7 +76,7 @@ class FlightDataSource:
                                 "$lt": _end.timestamp(),
                             }
                         },
-                    ]
+                    ],
                 }
             )
         ]
