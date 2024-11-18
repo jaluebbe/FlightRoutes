@@ -26,11 +26,6 @@ The [Historical database](https://opensky-network.org/data/impala) is available 
 [Arrivals and Departures in XML format](https://opendata.stadt-muenster.de/dataset/flugplandaten-des-flughafen-m%C3%BCnsterosnabr%C3%BCck-fmo/resource/79054aed-5eaf-4aba-9239)
  (no registration required).
 
-### Luxembourg Airport (LUX/ELLX)
-[Arrivals and Departures in JSON format](https://data.public.lu/en/datasets/arrivees-et-departs-de-laeroport-de-luxembourg/) (no registration required).
-Repeated calls from the same IP may get blocked by the firewall. Could be circumvented by using a random https proxy for each request.
-Airports names but not their respective IATA codes are available.
-
 ### Hamburg Airport (HAM/EDDH)
 [Developer portal](https://portal.api.hamburg-airport.de/) offering arrival and departure data in JSON format (registration required).
 
