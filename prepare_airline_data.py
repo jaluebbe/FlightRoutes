@@ -1,6 +1,7 @@
 import csv
 import sqlite3
-import os
+import pathlib
+import logging
 from collections import Counter
 import requests
 
@@ -8,8 +9,11 @@ URL = (
     "https://raw.githubusercontent.com/vradarserver/standing-data/main/"
     "airlines/schema-01/airlines.csv"
 )
-PWD = os.path.dirname(os.path.abspath(__file__))
-AIRLINE_DB_FILE = f"{PWD}/airlines.sqb"
+PWD = pathlib.Path(__file__).resolve().parent
+AIRLINE_DB_FILE = PWD / "airlines.sqb"
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 iata_count = Counter()
 with requests.Session() as s:
@@ -22,40 +26,46 @@ iata_count.update(
 )
 iata_count.subtract(list(iata_count))
 duplicate_iatas = set(+iata_count)
-print(f"Multiple occurence of the following IATA codes:\n{duplicate_iatas}")
-
-db_connection = sqlite3.connect(AIRLINE_DB_FILE)
-_cursor = db_connection.cursor()
-_cursor.execute(
-    "SELECT count(name) FROM sqlite_master "
-    "WHERE type='table' AND name='airlines'"
+logger.info(
+    f"Multiple occurence of the following IATA codes:\n{duplicate_iatas}"
 )
-if _cursor.fetchone()[0] == 0:
-    with open(os.path.join(PWD, "airlines.sql"), encoding="utf-8") as f:
-        db_connection.executescript(f.read())
 
-for _row in _airlines:
+with sqlite3.connect(AIRLINE_DB_FILE) as db_connection:
+    _cursor = db_connection.cursor()
     _cursor.execute(
-        "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
-        (_row["ICAO"], _row["IATA"], _row["Name"]),
+        "SELECT count(name) FROM sqlite_master "
+        "WHERE type='table' AND name='airlines'"
     )
-for _airline in []:
+    if _cursor.fetchone()[0] == 0:
+        with open(PWD / "airlines.sql", encoding="utf-8") as f:
+            db_connection.executescript(f.read())
+
+    for _row in _airlines:
+        _cursor.execute(
+            "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
+            (_row["ICAO"], _row["IATA"], _row["Name"]),
+        )
+    for _airline in []:
+        _cursor.execute(
+            "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
+            _airline,
+        )
+    for _icao_iata in [
+        ("IBZ", "6I"),
+    ]:
+        _cursor.execute(
+            "DELETE FROM airlines WHERE ICAO=? AND IATA=?", _icao_iata
+        )
+    for _icao_iata in []:
+        _cursor.execute(
+            "UPDATE airlines SET IATA='' WHERE ICAO=? AND IATA=?", _icao_iata
+        )
     _cursor.execute(
-        "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)",
-        _airline,
+        "UPDATE airlines SET Name='Azul Conecta', IATA='2F' WHERE ICAO='ACN'"
     )
-for _icao_iata in [
-    ("IBZ", "6I"),
-]:
-    _cursor.execute("DELETE FROM airlines WHERE ICAO=? AND IATA=?", _icao_iata)
-for _icao_iata in []:
-    _cursor.execute(
-        "UPDATE airlines SET IATA='' WHERE ICAO=? AND IATA=?", _icao_iata
-    )
-_cursor.execute(
-    "UPDATE airlines SET Name='Azul Conecta', IATA='2F' WHERE ICAO='ACN'"
-)
-_cursor.close()
-db_connection.commit()
-db_connection.execute("VACUUM")
-db_connection.close()
+    _cursor.close()
+    db_connection.commit()
+
+with sqlite3.connect(AIRLINE_DB_FILE) as db_connection:
+    cursor = db_connection.cursor()
+    cursor.execute("VACUUM")
