@@ -90,5 +90,4 @@ with sqlite3.connect(AIRPORT_DB_FILE) as db_connection:
     db_connection.commit()
 
 with sqlite3.connect(AIRPORT_DB_FILE) as db_connection:
-    cursor = db_connection.cursor()
-    cursor.execute("VACUUM")
+    db_connection.execute("VACUUM")
