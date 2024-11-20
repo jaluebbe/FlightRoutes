@@ -1,9 +1,9 @@
-import os
+import pathlib
 import logging
 import sqlite3
 from difflib import SequenceMatcher
 
-PWD = os.path.dirname(os.path.abspath(__file__))
+PWD = pathlib.Path(__file__).resolve().parent
 URI = f"file:{PWD}/airlines.sqb?mode=ro"
 
 
@@ -12,31 +12,29 @@ def _similarity(a: str, b: str) -> float:
     return round(s.ratio(), 3)
 
 
-def get_airline_info(icao: str):
+def get_airline_info(icao: str) -> dict | None:
     assert icao is not None
     assert len(icao) == 3
     assert icao.isalpha()
-    connection = sqlite3.connect(URI, uri=True)
-    connection.row_factory = sqlite3.Row
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Airlines WHERE ICAO=?", (icao,))
-    result = cursor.fetchone()
-    cursor.close()
-    connection.close()
+    with sqlite3.connect(URI, uri=True) as connection:
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Airlines WHERE ICAO=?", (icao,))
+        result = cursor.fetchone()
+        cursor.close()
     if result is not None:
         return dict(result)
 
 
-def get_airlines_by_iata(iata: str):
+def get_airlines_by_iata(iata: str) -> list[dict] | None:
     assert iata is not None
     assert len(iata) == 2
-    connection = sqlite3.connect(URI, uri=True)
-    connection.row_factory = sqlite3.Row
-    cursor = connection.cursor()
-    cursor.execute("SELECT * from Airlines WHERE IATA=?", (iata,))
-    results = cursor.fetchall()
-    cursor.close()
-    connection.close()
+    with sqlite3.connect(URI, uri=True) as connection:
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+        cursor.execute("SELECT * from Airlines WHERE IATA=?", (iata,))
+        results = cursor.fetchall()
+        cursor.close()
     if results is None:
         logging.warning(f"{iata} is unknown to database and may be a station.")
         return None
@@ -68,7 +66,7 @@ def get_airline_by_iata(iata: str, name: str = None, flight_number: int = None):
         return ordered_results[-1][1]
 
 
-def get_airline_iata(icao: str):
+def get_airline_iata(icao: str) -> str | None:
     result = get_airline_info(icao)
     if result is not None:
         return result["IATA"]
@@ -80,7 +78,7 @@ def get_airline_icao(iata: str, name: str = None, flight_number: int = None):
         return result["ICAO"]
 
 
-def get_airline_icaos(iata: str):
+def get_airline_icaos(iata: str) -> list[str] | None:
     results = get_airlines_by_iata(iata)
     if results is not None:
         return [_row["ICAO"] for _row in results]
