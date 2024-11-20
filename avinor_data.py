@@ -10,35 +10,53 @@ import flight_data_source
 
 avinor_airports_iata = (
     "AES",
-    "ANX",
     "ALF",
-    "FDE",
+    "ANX",
+    "BDU",
+    "BGO",
+    "BJF",
     "BNN",
     "BOO",
-    "BGO",
-    "KRS",
+    "BVG",
     "EVE",
+    "FDE",
     "FRO",
-    "OSL",
+    "HAA",
     "HAU",
-    "KKN",
-    "MOL",
-    "MJF",
+    "HFT",
     "HOV",
+    "KKN",
+    "KRS",
+    "KSU",
+    "LKL",
+    "LKN",
+    "LYR",
+    "MEH",
+    "MJF",
+    "MOL",
     "MQN",
+    "OSL",
+    "OSY",
+    "RET",
+    "RRS",
+    "RVK",
     "SDN",
-    "SVJ",
     "SKN",
+    "SOG",
+    "SOJ",
     "SSJ",
+    "SVG",
+    "SVJ",
     "TOS",
-    "TRF",
+    "TOS",
     "TRD",
+    "TRF",
+    "VAW",
     "VDS",
     "VRY",
-    "SVG",
 )
 
-URL = "https://flydata.avinor.no/XmlFeed.asp"
+URL = "https://asrv.avinor.no/XmlFeed/v1.0"
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +84,7 @@ def request_airport_data(airport_iata):
     response = requests.request("GET", URL, params=params, timeout=10)
     data = xmltodict.parse(response.text)
     flight_list = data["airport"]["flights"].get("flight")
+    logger.debug(f"{airport_iata}: {len(flight_list)} flights")
     if flight_list is None:
         return
     # flight_list represents the unmodified output of the API data which has
@@ -96,6 +115,10 @@ def request_airport_data(airport_iata):
             operator_icao = "BAW"
         elif operator_iata == "NO":
             operator_icao = "NOS"
+        elif operator_iata == "C3":
+            operator_icao = "TDR"
+        elif operator_icao == "WGH":
+            continue
         if None in (operator_icao, operator_iata):
             logger.warning(
                 "operator information incomplete {}, {}, {}".format(
@@ -124,10 +147,13 @@ def request_airport_data(airport_iata):
             _status_code = flight["status"]["@code"]
             flight["status"] = _status_codes[_status_code]
         route_items = []
+        if any(
+            _icao is None
+            for _icao in stopovers_icao + [other_airport_icao, airport_icao]
+        ):
+            continue
         if direction == "A":
-            route_items.append(other_airport_icao)
-            route_items += stopovers_icao
-            route_items.append(airport_icao)
+            route_items = [other_airport_icao] + stopovers_icao + [airport_icao]
             _route = "-".join(route_items)
             _date, _arrival = _get_date_and_time(flight)
             _key = "{}_{}_{}_{}".format(
@@ -142,9 +168,7 @@ def request_airport_data(airport_iata):
                 "route": _route,
             }
         elif direction == "D":
-            route_items.append(airport_icao)
-            route_items += stopovers_icao
-            route_items.append(other_airport_icao)
+            route_items = [airport_icao] + stopovers_icao + [other_airport_icao]
             _route = "-".join(route_items)
             _date, _departure = _get_date_and_time(flight)
             _key = "{}_{}_{}_{}".format(
