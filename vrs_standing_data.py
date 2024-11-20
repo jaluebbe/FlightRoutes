@@ -22,12 +22,12 @@ def refresh_database():
         for _file_name in glob.glob(
             "../standing-data/routes/schema-01/*/*.csv"
         ):
-            _callsign_info = validated_callsign(_row["Callsign"])
-            if _callsign_info is None:
-                continue
             with open(_file_name, encoding="utf-8-sig") as csv_file:
                 reader = csv.DictReader(csv_file)
                 for _row in reader:
+                    _callsign_info = validated_callsign(_row["Callsign"])
+                    if _callsign_info is None:
+                        continue
                     _cursor.execute(
                         "REPLACE INTO flight_routes("
                         "Callsign, OperatorIcao, Route) VALUES(?, ?, ?)",
@@ -48,8 +48,7 @@ def get_flight_route(callsign: str) -> dict | None:
     with sqlite3.connect(ROUTES_DB_FILE) as connection:
         _cursor = connection.cursor()
         _cursor.execute(
-            "SELECT Route from flight_routes WHERE Callsign=?",
-            (callsign,),
+            "SELECT Route from flight_routes WHERE Callsign=?", (callsign,)
         )
         result = _cursor.fetchone()
         _cursor.close()
