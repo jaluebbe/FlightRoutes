@@ -6,6 +6,7 @@ import fmo_data
 import ham_data
 import avinor_data
 import lh_cargo_data
+import anac_data
 from route_utils import route_check_simple, estimate_progress
 from route_info import get_recent_callsigns, get_flights_by_number
 import flight_data_source
@@ -43,6 +44,7 @@ if __name__ == "__main__":
         ham_data.Airport(),
         lh_cargo_data.Airline(),
         avinor_data.Airport(),
+        anac_data.Agency(),
     ]
     for _data_source in data_sources:
         print(f"### missing flight mappings ({_data_source.source}) ###")
