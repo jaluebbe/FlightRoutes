@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import pathlib
 from itertools import permutations
 import arrow
 import requests
@@ -57,8 +58,7 @@ avinor_airports_iata = (
 )
 
 URL = "https://asrv.avinor.no/XmlFeed/v1.0"
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(pathlib.Path(__file__).name)
 
 
 def _get_date_and_time(flight):

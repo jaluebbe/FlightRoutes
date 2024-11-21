@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 import logging
+import pathlib
 import arrow
 import requests
 from airport_info import get_airport_icao
@@ -9,7 +10,7 @@ import flight_data_source
 
 from config import HAM_API_KEY
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(pathlib.Path(__file__).name)
 
 
 def request_ham_data():
