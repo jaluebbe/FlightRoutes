@@ -143,45 +143,34 @@ def request_airport_data(airport_iata):
                         "missing airport icao for {}".format(stopover_iata)
                     )
         direction = flight["arr_dep"]
-        if "status" in flight:
-            _status_code = flight["status"]["@code"]
-            flight["status"] = _status_codes[_status_code]
         route_items = []
         if any(
             _icao is None
             for _icao in stopovers_icao + [other_airport_icao, airport_icao]
         ):
             continue
+        response = {
+            "airline_iata": operator_iata,
+            "airline_icao": operator_icao,
+            "flight_number": flight_number,
+        }
+        if "status" in flight:
+            _status_code = flight["status"]["@code"]
+            response["status"] = _status_codes[_status_code]
         if direction == "A":
             route_items = [other_airport_icao] + stopovers_icao + [airport_icao]
-            _route = "-".join(route_items)
             _date, _arrival = _get_date_and_time(flight)
-            _key = "{}_{}_{}_{}".format(
-                operator_iata, flight_number, _date, _route
-            )
-            yield {
-                "_id": _key,
-                "airline_iata": operator_iata,
-                "airline_icao": operator_icao,
-                "flight_number": flight_number,
-                "arrival": _arrival,
-                "route": _route,
-            }
+            response["arrival"] = _arrival
         elif direction == "D":
             route_items = [airport_icao] + stopovers_icao + [other_airport_icao]
-            _route = "-".join(route_items)
             _date, _departure = _get_date_and_time(flight)
-            _key = "{}_{}_{}_{}".format(
-                operator_iata, flight_number, _date, _route
-            )
-            yield {
-                "_id": _key,
-                "airline_iata": operator_iata,
-                "airline_icao": operator_icao,
-                "flight_number": flight_number,
-                "departure": _departure,
-                "route": _route,
-            }
+            response["departure"] = _departure
+        _route = "-".join(route_items)
+        response["route"] = _route
+        response["_id"] = "{}_{}_{}_{}".format(
+            operator_iata, flight_number, _date, _route
+        )
+        yield response
 
 
 class Airport(flight_data_source.FlightDataSource):
