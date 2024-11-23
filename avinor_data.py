@@ -65,7 +65,7 @@ def _get_date_and_time(flight):
     _timestamp = arrow.get(flight["schedule_time"])
     _date = _timestamp.format("YYYY-MM-DD")
     if "status" in flight and "@time" in flight["status"]:
-        _timestamp = arrow.get(flight["status"]["time"])
+        _timestamp = arrow.get(flight["status"]["@time"])
     return _date, _timestamp.timestamp()
 
 
@@ -155,8 +155,7 @@ def request_airport_data(airport_iata):
             "flight_number": flight_number,
         }
         if "status" in flight:
-            _status_code = flight["status"]["@code"]
-            response["status"] = _status_codes[_status_code]
+            response["status"] = _status_codes[flight["status"]["@code"]]
         if direction == "A":
             route_items = [other_airport_icao] + stopovers_icao + [airport_icao]
             _date, _arrival = _get_date_and_time(flight)
