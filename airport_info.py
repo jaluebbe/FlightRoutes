@@ -59,7 +59,6 @@ def get_closest_airport(
 def get_airport_info(icao: str) -> dict | None:
     assert icao is not None
     assert len(icao) == 4
-    assert icao.isalpha()
     with sqlite3.connect(URI, uri=True) as connection:
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()

@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 countries = {}
-icao_pattern = re.compile("^[A-Z]{4}$")
+icao_pattern = re.compile("^[A-Z]{2}[A-Z0-9]{2}$")
 
 with requests.Session() as s:
     _response = s.get(f"{OURAIRPORTS_URL}/countries.csv")
