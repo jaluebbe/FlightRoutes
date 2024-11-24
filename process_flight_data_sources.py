@@ -118,6 +118,11 @@ def process_data_source(
                 # If a simple fit for this flight has been seen recently,
                 # we skip the following process.
                 continue
+            if active_flights[_candidate].get("callsign_number") is not None:
+                if not data_source.allow_numerical_candidates:
+                    continue
+            elif not data_source.allow_alphanumerical_candidates:
+                continue
             _check_result = route_check_simple(
                 active_flights[_candidate], _flight["route"]
             )

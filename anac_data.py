@@ -12,6 +12,7 @@ _day_labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 class Agency(flight_data_source.FlightDataSource):
     def __init__(self):
         super().__init__("ANAC", category="agencies")
+        self.allow_alphanumerical_candidates = False
 
     def update_data(self, utc):
         if utc is None:

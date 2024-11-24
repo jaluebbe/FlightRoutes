@@ -25,6 +25,8 @@ class FlightDataSource:
             self.mycol.create_index("departure")
         if "arrival_1" not in self.mycol.index_information():
             self.mycol.create_index("arrival")
+        self.allow_numerical_candidates = False
+        self.allow_alphanumerical_candidates = True
 
     def update_data(self):
         pass
