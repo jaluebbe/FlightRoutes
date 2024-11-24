@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import json
 import arrow
 import redis
 import fmo_data
@@ -39,21 +40,27 @@ def process_data_source(
 
 
 if __name__ == "__main__":
+    with open("recurring_callsigns.json") as f:
+        recurring_callsigns = json.load(f)["recurring_callsigns"]
     data_sources = [
         fmo_data.Airport(),
         ham_data.Airport(),
         lh_cargo_data.Airline(),
         avinor_data.Airport(),
-        anac_data.Agency(),
+        # anac_data.Agency(),
     ]
     for _data_source in data_sources:
         print(f"### missing flight mappings ({_data_source.source}) ###")
         for _flight_icao, _flight_iata, _flight_route in process_data_source(
             _data_source
         ):
+            if _flight_icao in recurring_callsigns:
+                continue
             _existing_mapping = redis_connection.hget(
                 "callsign_translation", _flight_icao
             )
+            if _existing_mapping in recurring_callsigns:
+                continue
             _callsign_input = validated_callsign(
                 input(
                     f"{_flight_icao:<7} {_flight_iata:<6} {_flight_route} "
