@@ -79,8 +79,8 @@ class Airport(flight_data_source.FlightDataSource):
             )
             if None in (_airline_icao, _airline_iata):
                 logger.warning(
-                    "operator information incomplete {}, {}".format(
-                        _airline_icao, _airline_iata
+                    "operator information incomplete {}, {}, {}".format(
+                        _airline_icao, _airline_iata, _airline_name
                     )
                 )
                 continue
@@ -127,8 +127,8 @@ class Airport(flight_data_source.FlightDataSource):
             )
             if None in (_airline_icao, _airline_iata):
                 logger.warning(
-                    "operator information incomplete {}, {}".format(
-                        _airline_icao, _airline_iata
+                    "operator information incomplete {}, {}, {}".format(
+                        _airline_icao, _airline_iata, _airline_name
                     )
                 )
                 continue
