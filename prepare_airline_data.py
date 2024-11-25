@@ -49,7 +49,12 @@ with sqlite3.connect(AIRLINE_DB_FILE) as db_connection:
         _cursor.execute(
             "REPLACE INTO airlines(ICAO, IATA, Name) VALUES(?, ?, ?)", _airline
         )
-    for _icao_iata in [("IBZ", "6I"), ("WGH", "WF"), ("SLK", "MI")]:
+    for _icao_iata in [
+        ("IBZ", "6I"),
+        ("WGH", "WF"),
+        ("SLK", "MI"),
+        ("NRS", "DI"),
+    ]:
         _cursor.execute(
             "DELETE FROM airlines WHERE ICAO=? AND IATA=?", _icao_iata
         )
@@ -57,7 +62,7 @@ with sqlite3.connect(AIRLINE_DB_FILE) as db_connection:
         _cursor.execute(
             "UPDATE airlines SET IATA='' WHERE ICAO=? AND IATA=?", _icao_iata
         )
-    for _iata_icao in [("MI", "FHM")]:
+    for _iata_icao in [("MI", "FHM"), ("DI", "MBU")]:
         _cursor.execute("UPDATE airlines SET IATA=? WHERE ICAO=?", _iata_icao)
     _cursor.execute(
         "UPDATE airlines SET Name='Azul Conecta', IATA='2F' WHERE ICAO='ACN'"
