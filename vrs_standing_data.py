@@ -56,5 +56,19 @@ def get_flight_route(callsign: str) -> dict | None:
         return result[0]
 
 
+def get_airline_routes(operator_icao: str) -> list[str]:
+    with sqlite3.connect(ROUTES_DB_FILE) as connection:
+        _cursor = connection.cursor()
+        _cursor.execute(
+            "SELECT DISTINCT Route FROM flight_routes WHERE OperatorIcao=?",
+            (operator_icao,),
+        )
+        result = _cursor.fetchall()
+        _cursor.close()
+    if result:
+        return [row[0] for row in result]
+    return []
+
+
 if __name__ == "__main__":
     refresh_database()
