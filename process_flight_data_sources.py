@@ -18,7 +18,6 @@ from route_info import (
 import flight_data_source
 from opensky_flights_info import OpenSkyFlights
 import vrs_standing_data as vsd
-import pp_flightroute_data as pfd
 
 logging.basicConfig(level=logging.INFO)
 redis_connection = redis.Redis(decode_responses=True)
@@ -33,7 +32,6 @@ def _filter_candidates(candidates, route):
         for _callsign in candidates
         if osf.get_routes_by_callsign(_callsign) == route
         or vsd.get_flight_route(_callsign) == route
-        or pfd.get_flight_route(_callsign) == route
     ]
 
 
