@@ -3,10 +3,13 @@ import pathlib
 import glob
 import csv
 import sqlite3
+import re
 from opensky_utils import validated_callsign
 
 PWD = pathlib.Path(__file__).resolve().parent
 ROUTES_DB_FILE = PWD / "vrs_routes.sqb"
+
+valid_route = re.compile(r"^([A-Z]{2}[A-Z0-9]{2}-){1,}[A-Z]{2}[A-Z0-9]{2}$")
 
 
 def refresh_database():
@@ -27,6 +30,8 @@ def refresh_database():
                 for _row in reader:
                     _callsign_info = validated_callsign(_row["Callsign"])
                     if _callsign_info is None:
+                        continue
+                    if not valid_route.match(_row["AirportCodes"]):
                         continue
                     _cursor.execute(
                         "REPLACE INTO flight_routes("
