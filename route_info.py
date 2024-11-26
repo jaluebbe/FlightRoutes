@@ -177,3 +177,8 @@ def get_recent_callsigns(min_quality: int = 1, hours: float = 48) -> list:
     _cursor.close()
     connection.close()
     return [_row[0] for _row in results]
+
+
+if __name__ == "__main__":
+    with sqlite3.connect(ROUTES_DB_FILE) as db_connection:
+        db_connection.execute("VACUUM")
