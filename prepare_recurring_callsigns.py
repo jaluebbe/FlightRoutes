@@ -1,4 +1,5 @@
 import json
+import logging
 import pandas as pd
 import arrow
 from pyopensky.trino import Trino
@@ -7,6 +8,9 @@ trino = Trino()
 
 end_date = arrow.utcnow().shift(hours=-1).floor("day")
 start_date = end_date.shift(days=-22)
+
+# Some operator ICAOs do not represent scheduled airline flights:
+excluded_operators = ["XXX", "DCM", "FWR", "FFL", "XAA", "EJA", "NJE", "NEJ"]
 
 
 def process_flightlist(flightlist: pd.DataFrame) -> pd.DataFrame:
@@ -26,8 +30,8 @@ def process_flightlist(flightlist: pd.DataFrame) -> pd.DataFrame:
             na=False,
         )
     ].copy()
-    flightlist["lastseen"] = flightlist["lastseen"].astype(int) // 10**9
-    flightlist["firstseen"] = flightlist["firstseen"].astype(int) // 10**9
+    flightlist["lastseen"] = flightlist["lastseen"].astype(int) // 10 ** 9
+    flightlist["firstseen"] = flightlist["firstseen"].astype(int) // 10 ** 9
     return flightlist
 
 
@@ -37,16 +41,24 @@ dataframes = []
 current_date = start_date
 while current_date < end_date:
     _flightlist = trino.flightlist(current_date.format("YYYY-MM-DD"))
-    dataframes.append(process_flightlist(_flightlist))
+    if _flightlist is not None:
+        dataframes.append(process_flightlist(_flightlist))
+    else:
+        logging.warning(f"no flightlist available for {current_date}")
     current_date = current_date.shift(days=1)
 callsign_occurences = pd.concat(dataframes, ignore_index=True)
 
 _after = arrow.utcnow()
 duration = (_after - _before).total_seconds()
+# Exclude callsigns from operators that do not represent airline flights.
+callsign_occurences = callsign_occurences[
+    ~callsign_occurences.callsign.str[:3].isin(excluded_operators)
+]
 
 callsign_occurences = callsign_occurences.groupby(["callsign"]).agg(
     {"lastseen": "max", "firstseen": "min"}
 )
+# The callsign should have been active on at least two different days.
 recurring_callsigns = callsign_occurences[
     callsign_occurences.lastseen - callsign_occurences.firstseen > 86400
 ]
