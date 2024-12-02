@@ -1,8 +1,10 @@
 import re
 import os
 import json
+import logging
 import redis
 import requests
+from requests import ConnectionError
 
 PWD = os.path.dirname(os.path.abspath(__file__))
 redis_connection = redis.Redis(decode_responses=True)
@@ -38,7 +40,11 @@ def request_icao24_from_opensky(icao24: str):
     if redis_connection.sismember("unknown_icao24s", icao24):
         return
     url = "https://opensky-network.org/api/metadata/aircraft/icao/"
-    response = requests.get(url + icao24)
+    try:
+        response = requests.get(url + icao24)
+    except ConnectionError:
+        logging.exception(f"Problem to get registration for {icao24}.")
+        return
     if response.status_code == 200:
         _data = response.json()
         registration = "".join(_data["registration"].split("-"))
@@ -116,18 +122,26 @@ def validated_position(
         "on_ground": opensky_state.on_ground,
         "category": opensky_state.category,
     }
-    if None in position.values():
+    if opensky_state.on_ground:
+        required_fields = {
+            k: v
+            for k, v in position.items()
+            if k not in ["vertical_rate", "altitude"]
+        }
+    else:
+        required_fields = position
+    if None in required_fields.values():
         # incomplete position data or invalid callsign
         return None
-    if opensky_state.on_ground and not allow_on_ground:
-        # For aircraft on ground, route and schedule verification will
-        # mostly fail.
-        return None
-    flight_level = int(round(opensky_state.baro_altitude / 0.3048 / 100))
-    # maximum FL for Concorde
-    if flight_level > 600:
-        return None
-    position["flight_level"] = flight_level
+    if opensky_state.on_ground:
+        if not allow_on_ground:
+            return None
+    else:
+        flight_level = int(round(opensky_state.baro_altitude / 0.3048 / 100))
+        # maximum FL for Concorde
+        if flight_level > 600:
+            return None
+        position["flight_level"] = flight_level
     if opensky_state.sensors is None:
         position["sensors"] = []
     else:
