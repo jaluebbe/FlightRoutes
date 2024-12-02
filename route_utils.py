@@ -103,11 +103,30 @@ def single_route_check_simple(position, route):
         bearing_to_destination = temp[1]
         logging.exception(f"single_route_check_simple({position}, {route})")
     deviation = dist_origin + dist_destination - route_length
-    altitude = position["altitude"]
-    vertical_rate = position["vertical_rate"]
     error_angle = np.abs(
         (position["heading"] - bearing_to_destination + 180) % 360 - 180
     )
+    progress = dist_origin / (dist_origin + dist_destination)
+    deviation_ratio = deviation / route_length
+    response = {
+        "route_length": route_length,
+        "route": route,
+        "deviation": deviation,
+        "error_angle": error_angle,
+        "deviation_ratio": deviation_ratio,
+        "progress": progress,
+        "check_failed": False,
+        "dist_origin": dist_origin,
+        "dist_destination": dist_destination,
+        "callsign": position["callsign"],
+        "icao24": position["icao24"],
+    }
+    if position["on_ground"]:
+        if min(dist_origin, dist_destination) > 5e3:
+            response["check_failed"] = True
+        return response
+    altitude = position["altitude"]
+    vertical_rate = position["vertical_rate"]
     # A deviation of more than 15% route length but at least 265km as well as
     # deviations larger than 60% are not accepted in general.
     # Vertical speed below -5m/s is not accepted within the first 20% of the
@@ -116,13 +135,10 @@ def single_route_check_simple(position, route):
     # Further checks take the deviation from the bearing to the destination
     # into account. These checks are considered only in the middle segment of
     # the flight to avoid confusion by holding patterns, departure and landing.
-    check_failed = False
-    progress = dist_origin / (dist_origin + dist_destination)
-    deviation_ratio = deviation / route_length
     if deviation > 265e3 and deviation_ratio > 0.15:
-        check_failed = True
+        response["check_failed"] = True
     elif deviation_ratio > 0.6:
-        check_failed = True
+        response["check_failed"] = True
     elif (
         0.12 < progress
         and dist_origin > 81.5e3
@@ -130,7 +146,7 @@ def single_route_check_simple(position, route):
         and dist_destination > 77e3
         and error_angle > 61.5
     ):
-        check_failed = True
+        response["check_failed"] = True
     elif (
         0.1 < progress
         and dist_origin > 25e3
@@ -138,27 +154,19 @@ def single_route_check_simple(position, route):
         and dist_destination > 41e3
         and error_angle > 126
     ):
-        check_failed = True
+        response["check_failed"] = True
     elif progress < 0.2 and vertical_rate < -5:
-        check_failed = True
+        response["check_failed"] = True
     elif progress > 0.8 and vertical_rate > 5.5:
-        check_failed = True
-    return {
-        "deviation": deviation,
-        "route_length": route_length,
-        "route": route,
-        "error_angle": error_angle,
-        "check_failed": check_failed,
-        "deviation_ratio": deviation_ratio,
-        "dist_origin": dist_origin,
-        "dist_destination": dist_destination,
-        "callsign": position["callsign"],
-        "icao24": position["icao24"],
-        "vertical_rate": position["vertical_rate"],
-        "velocity": position["velocity"],
-        "progress": progress,
-        "altitude": altitude,
-    }
+        response["check_failed"] = True
+    response.update(
+        {
+            "vertical_rate": position["vertical_rate"],
+            "velocity": position["velocity"],
+            "altitude": altitude,
+        }
+    )
+    return response
 
 
 def route_check_simple(position, route):
