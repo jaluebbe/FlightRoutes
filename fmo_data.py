@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import requests
 import arrow
 import xmltodict
@@ -55,7 +56,11 @@ class Airport(flight_data_source.FlightDataSource):
             _fmo_flight["_id"] = _flight["ID"]
             if _flight["FNR"][2] == " ":
                 _airline_iata = _flight["FNR"][:2]
-                _flight_number = int(_flight["FNR"][3:])
+                if _flight["FNR"][3:].isdecimal():
+                    _flight_number = int(_flight["FNR"][3:])
+                else:
+                    logging.warning(f"Problem with {_flight['FNR']}")
+                    continue
             else:
                 continue
             _airline_icao = get_airline_icao(
