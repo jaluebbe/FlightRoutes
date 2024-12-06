@@ -4,7 +4,13 @@ import numpy as np
 import arrow
 import pygeodesy.ellipsoidalVincenty as ev
 import pygeodesy.ellipsoidalExact as ee
-from airport_info import get_airport_info
+from airport_info import get_airport_info, get_airport_iata
+
+
+def convert_to_iata_route(route: str) -> str:
+    icaos = route.split("-")
+    iatas = [get_airport_iata(_icao) or _icao for _icao in icaos]
+    return "-".join(iatas)
 
 
 def get_single_route_length(origin_icao, destination_icao):
