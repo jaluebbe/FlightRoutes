@@ -10,7 +10,29 @@ end_date = arrow.utcnow().shift(hours=-1).floor("day")
 start_date = end_date.shift(days=-22)
 
 # Some operator ICAOs do not represent scheduled airline flights:
-excluded_operators = ["XXX", "DCM", "FWR", "FFL", "XAA", "EJA", "NJE", "NEJ"]
+excluded_operators = [
+    "DCM",
+    "FWR",
+    "FFL",
+    "XAA",
+    "EJA",
+    "NJE",
+    "NEJ",
+    "CXK",
+    "EJM",
+    "JAS",
+    "HRT",
+    "JTZ",
+    "LJY",
+    "LXJ",
+    "MVP",
+    "PBR",
+    "SIS",
+    "TFF",
+    "TWY",
+    "XFL",
+    "XSR",
+]
 
 
 def process_flightlist(flightlist: pd.DataFrame) -> pd.DataFrame:
