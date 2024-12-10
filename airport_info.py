@@ -29,14 +29,18 @@ def get_closest_airports(
         cursor = connection.cursor()
         # 1deg latitude is approximately 111km.
         location_query = (
-            "SELECT * FROM Airports WHERE Latitude > {0:f} - 0.5 AND "
+            "SELECT *, CAST(DistanceBetween({0:f}, {1:f}, Latitude, Longitude)"
+            " AS INTEGER) AS Distance "
+            "FROM Airports WHERE Latitude > {0:f} - 0.5 AND "
             "Latitude < {0:f} + 0.5 "
-            "ORDER BY DistanceBetween({0:f}, {1:f}, Latitude, Longitude) "
+            "ORDER BY Distance "
             "ASC LIMIT 10"
         )
         # limit results to airports with IATA designator
         location_query_iata_only = (
-            "SELECT * FROM Airports WHERE Latitude > {0:f} - 0.5 AND "
+            "SELECT *, CAST(DistanceBetween({0:f}, {1:f}, Latitude, Longitude)"
+            " AS INTEGER) AS Distance "
+            "FROM Airports WHERE Latitude > {0:f} - 0.5 AND "
             "Latitude < {0:f} + 0.5 AND LENGTH(IATA)=3 "
             "ORDER BY DistanceBetween({0:f}, {1:f}, Latitude, Longitude) "
             "ASC LIMIT 5"
