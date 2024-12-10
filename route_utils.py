@@ -1,3 +1,4 @@
+import re
 import time
 import logging
 import numpy as np
@@ -11,6 +12,17 @@ def convert_to_iata_route(route: str) -> str:
     icaos = route.split("-")
     iatas = [get_airport_iata(_icao) or _icao for _icao in icaos]
     return "-".join(iatas)
+
+
+def check_route_airports(route: str, valid_airports: list = None) -> str | None:
+    airport_pattern = re.compile(r"^[A-Z]{2}[0-9A-Z]{2}$")
+    airports = route.split("-")
+    if not all(airport_pattern.match(airport) for airport in airports):
+        return None
+    if valid_airports is not None:
+        if not all(airport in valid_airports for airport in airports):
+            return None
+    return route
 
 
 def get_single_route_length(origin_icao, destination_icao):
