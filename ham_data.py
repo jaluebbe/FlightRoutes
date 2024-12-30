@@ -78,11 +78,12 @@ class Airport(flight_data_source.FlightDataSource):
                 _airline_iata, _airline_name, _flight_number
             )
             if None in (_airline_icao, _airline_iata):
-                logger.warning(
-                    "operator information incomplete {}, {}, {}".format(
-                        _airline_icao, _airline_iata, _airline_name
+                if _airline_iata != "ZZ":
+                    logger.warning(
+                        "operator information incomplete {}, {}, {}".format(
+                            _airline_icao, _airline_iata, _airline_name
+                        )
                     )
-                )
                 continue
             _date, _timestamp = _get_date_and_time(_flight)
             _route_items = [get_airport_icao(_flight["originAirport3LCode"])]
@@ -126,11 +127,12 @@ class Airport(flight_data_source.FlightDataSource):
                 _airline_iata, _airline_name, _flight_number
             )
             if None in (_airline_icao, _airline_iata):
-                logger.warning(
-                    "operator information incomplete {}, {}, {}".format(
-                        _airline_icao, _airline_iata, _airline_name
+                if _airline_iata != "ZZ":
+                    logger.warning(
+                        "operator information incomplete {}, {}, {}".format(
+                            _airline_icao, _airline_iata, _airline_name
+                        )
                     )
-                )
                 continue
             _date, _timestamp = _get_date_and_time(_flight)
             _route_items = ["EDDH"]
