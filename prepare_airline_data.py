@@ -57,6 +57,8 @@ with sqlite3.connect(AIRLINE_DB_FILE) as db_connection:
         ("PSD", "TO"),
         ("ADH", "AP"),
         ("SCW", "TF"),
+        ("VNZ", "L6"),
+        ("IAC", "IC"),
     ]:
         _cursor.execute(
             "DELETE FROM airlines WHERE ICAO=? AND IATA=?", _icao_iata
