@@ -178,6 +178,33 @@ def merge_routes(df_routes: pd.DataFrame) -> pd.DataFrame:
     return grouped_routes
 
 
+def filter_callsigns(flightlist: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filter a dataframe to exclude callsigns that do not represent scheduled
+    airline flights.
+    """
+    callsign_components = (
+        flightlist["callsign"]
+        .str.rstrip()
+        .str.extract(
+            r"^(?P<operator>[A-Z]{3})0*(?P<suffix>[1-9][A-Z0-9]*)$", expand=True
+        )
+    )
+    flightlist["callsign"] = (
+        callsign_components["operator"] + callsign_components["suffix"]
+    )
+    flightlist.dropna(subset=["callsign"], inplace=True)
+    flightlist = flightlist.loc[
+        flightlist["callsign"].str.contains(
+            r"^(?:[A-Z]{3})[1-9](?:(?:[0-9]{0,3})|(?:[0-9]{0,2})(?:[A-Z])|"
+            r"(?:[0-9]?)(?:[A-Z]{2}))$",
+            regex=True,
+            na=False,
+        )
+    ]
+    return flightlist
+
+
 def process_callsign(df_callsign: pd.DataFrame) -> None | dict:
     if df_callsign.empty:
         return
