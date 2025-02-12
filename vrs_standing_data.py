@@ -50,7 +50,9 @@ def refresh_database():
 
 
 def get_flight_route(callsign: str) -> dict | None:
-    with sqlite3.connect(ROUTES_DB_FILE) as connection:
+    with sqlite3.connect(
+        f"file:{ROUTES_DB_FILE}?mode=ro", uri=True
+    ) as connection:
         _cursor = connection.cursor()
         _cursor.execute(
             "SELECT Route from flight_routes WHERE Callsign=?", (callsign,)
@@ -62,7 +64,9 @@ def get_flight_route(callsign: str) -> dict | None:
 
 
 def get_airline_routes(operator_icao: str) -> list[str]:
-    with sqlite3.connect(ROUTES_DB_FILE) as connection:
+    with sqlite3.connect(
+        f"file:{ROUTES_DB_FILE}?mode=ro", uri=True
+    ) as connection:
         _cursor = connection.cursor()
         _cursor.execute(
             "SELECT DISTINCT Route FROM flight_routes WHERE OperatorIcao=?",
