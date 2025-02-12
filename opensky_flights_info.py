@@ -12,7 +12,7 @@ from config import OPENSKY_USER, OPENSKY_PASSWORD
 
 logging.basicConfig(level=logging.INFO)
 
-URL = url = "https://opensky-network.org/api/flights/aircraft"
+URL = "https://opensky-network.org/api/flights/aircraft"
 
 
 class OpenSkyFlights:
