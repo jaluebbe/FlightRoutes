@@ -1,0 +1,7 @@
+{
+  "_comment": "Flight number ranges used to disambiguate airlines sharing an IATA code. Each entry maps a flight number range to the operating sub-brand name used for similarity matching.",
+  "LH": [
+    {"min": 8000, "max": 8515, "name": "Lufthansa Cargo"},
+    {"min": 0,    "max": 7999, "name": "Lufthansa"}
+  ]
+}

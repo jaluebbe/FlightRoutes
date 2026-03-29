@@ -1,0 +1,12 @@
+{
+  "_comment": "Manual corrections applied after importing VRS standing data. Each patch is logged during import. Remove a patch once the upstream source has been corrected.",
+  "delete": [
+    {"icao": "IBZ", "iata": "6I"}
+  ],
+  "clear_iata": [],
+  "set_iata": [
+    {"icao": "MBU", "iata": "DI"},
+    {"icao": "BGA", "iata": "4Y"}
+  ],
+  "insert": []
+}
