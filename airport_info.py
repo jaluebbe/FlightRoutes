@@ -31,17 +31,17 @@ def get_closest_airports(
         location_query = (
             "SELECT *, CAST(DistanceBetween({0:f}, {1:f}, Latitude, Longitude)"
             " AS INTEGER) AS Distance "
-            "FROM Airports WHERE Latitude > {0:f} - 0.5 AND "
-            "Latitude < {0:f} + 0.5 "
+            "FROM Airports WHERE Latitude > {0:f} - 1 AND "
+            "Latitude < {0:f} + 1 "
             "ORDER BY Distance "
-            "ASC LIMIT 10"
+            "ASC LIMIT 15"
         )
         # limit results to airports with IATA designator
         location_query_iata_only = (
             "SELECT *, CAST(DistanceBetween({0:f}, {1:f}, Latitude, Longitude)"
             " AS INTEGER) AS Distance "
-            "FROM Airports WHERE Latitude > {0:f} - 0.5 AND "
-            "Latitude < {0:f} + 0.5 AND LENGTH(IATA)=3 "
+            "FROM Airports WHERE Latitude > {0:f} - 1 AND "
+            "Latitude < {0:f} + 1 AND LENGTH(IATA)=3 "
             "ORDER BY DistanceBetween({0:f}, {1:f}, Latitude, Longitude) "
             "ASC LIMIT 5"
         )
