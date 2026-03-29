@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# encoding: utf-8
+#!/usr/bin/env python3
 import pathlib
 import csv
 import re
@@ -16,47 +15,45 @@ AIRPORT_DB_FILE = PWD / "airports.sqb"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-countries = {}
-icao_pattern = re.compile("^[A-Z]{2}[A-Z0-9]{2}$")
+icao_pattern = re.compile(r"^[A-Z]{2}[A-Z0-9]{2}$")
 
-with requests.Session() as s:
-    _response = s.get(f"{OURAIRPORTS_URL}/countries.csv")
-    _response.encoding = "utf-8"
-for _row in csv.DictReader(_response.text.splitlines(), delimiter=","):
-    countries[_row["code"]] = _row["name"]
 
-with sqlite3.connect(AIRPORT_DB_FILE) as db_connection:
-    _cursor = db_connection.cursor()
-    _cursor.execute(
+def _fetch_csv(session: requests.Session, url: str) -> list[dict]:
+    response = session.get(url)
+    response.encoding = "utf-8"
+    return list(csv.DictReader(response.text.splitlines(), delimiter=","))
+
+
+def _ensure_schema(db_connection: sqlite3.Connection) -> None:
+    cursor = db_connection.cursor()
+    cursor.execute(
         "SELECT count(name) FROM sqlite_master "
         "WHERE type='table' AND name='airports'"
     )
-    if _cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0:
         with open(PWD / "airports.sql", encoding="utf-8") as f:
             db_connection.executescript(f.read())
+    cursor.close()
 
-    with requests.Session() as s:
-        _response = s.get(f"{OURAIRPORTS_URL}/airports.csv")
-        _response.encoding = "utf-8"
-    _reader = csv.DictReader(_response.text.splitlines(), delimiter=",")
-    airports = [
-        row
-        for row in _reader
-        if icao_pattern.match(row["gps_code"]) is not None
-    ]
 
-    icao_count = Counter(row["gps_code"] for row in airports)
-    duplicate_icaos = {icao for icao, count in icao_count.items() if count > 1}
-
-    tf = TimezoneFinder()
+def _iter_valid_airports(
+    airports: list[dict],
+    duplicate_icaos: set[str],
+    tf: TimezoneFinder,
+    countries: dict[str, str],
+):
     for _row in airports:
-        if not len(_row["iata_code"]) in (0, 3):
-            if _row["iata_code"] == "0":
+        if _row["type"] == "closed":
+            continue
+
+        _iata = _row["iata_code"]
+        if len(_iata) not in (0, 3):
+            # OurAirports uses "0" as a placeholder for a missing IATA code
+            if _iata == "0":
                 _row["iata_code"] = ""
             else:
                 continue
-        if _row["type"] == "closed":
-            continue
+
         if (
             _row["gps_code"] in duplicate_icaos
             and _row["ident"] != _row["gps_code"]
@@ -66,28 +63,54 @@ with sqlite3.connect(AIRPORT_DB_FILE) as db_connection:
                 f"{_row['gps_code']} / {_row['iata_code']}."
             )
             continue
+
         _longitude = float(_row["longitude_deg"])
         _latitude = float(_row["latitude_deg"])
         _timezone = tf.timezone_at(lng=_longitude, lat=_latitude)
-        _country = countries[_row["iso_country"]]
+
         if _timezone is None:
-            logger.warning("timezone info unknown: {}".format(_row["gps_code"]))
-        _cursor.execute(
+            logger.warning(f"timezone info unknown: {_row['gps_code']}")
+
+        yield (
+            _row["name"],
+            _row["municipality"],
+            countries[_row["iso_country"]],
+            _row["iata_code"],
+            _row["gps_code"],
+            _latitude,
+            _longitude,
+            _row["elevation_ft"],
+            _timezone,
+        )
+
+
+def main() -> None:
+    with requests.Session() as session:
+        countries = {
+            _row["code"]: _row["name"]
+            for _row in _fetch_csv(session, f"{OURAIRPORTS_URL}/countries.csv")
+        }
+        raw_airports = _fetch_csv(session, f"{OURAIRPORTS_URL}/airports.csv")
+
+    airports = [
+        _row for _row in raw_airports if icao_pattern.match(_row["gps_code"])
+    ]
+
+    icao_count = Counter(_row["gps_code"] for _row in airports)
+    duplicate_icaos = {icao for icao, count in icao_count.items() if count > 1}
+
+    tf = TimezoneFinder()
+
+    with sqlite3.connect(AIRPORT_DB_FILE) as db_connection:
+        _ensure_schema(db_connection)
+        db_connection.executemany(
             "REPLACE INTO airports(Name, City, Country, IATA, ICAO, Latitude, "
             "Longitude, Altitude, Timezone) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                _row["name"],
-                _row["municipality"],
-                _country,
-                _row["iata_code"],
-                _row["gps_code"],
-                _latitude,
-                _longitude,
-                _row["elevation_ft"],
-                _timezone,
-            ),
+            _iter_valid_airports(airports, duplicate_icaos, tf, countries),
         )
-    db_connection.commit()
+        db_connection.commit()
+        db_connection.execute("VACUUM")
 
-with sqlite3.connect(AIRPORT_DB_FILE) as db_connection:
-    db_connection.execute("VACUUM")
+
+if __name__ == "__main__":
+    main()

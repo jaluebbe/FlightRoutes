@@ -6,49 +6,43 @@ import sqlite3
 PWD = pathlib.Path(__file__).resolve().parent
 URI = f"file:{PWD}/airports.sqb?mode=ro"
 
+logger = logging.getLogger(__name__)
+
 
 def get_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     if None in (lat1, lon1, lat2, lon2):
         return float("nan")
-    degRad = 2 * math.pi / 360
-    distance = 6.370e6 * math.acos(
-        math.sin(lat1 * degRad) * math.sin(lat2 * degRad)
-        + math.cos(lat1 * degRad)
-        * math.cos(lat2 * degRad)
-        * math.cos((lon2 - lon1) * degRad)
+    deg_rad = 2 * math.pi / 360
+    dot_product = math.sin(lat1 * deg_rad) * math.sin(
+        lat2 * deg_rad
+    ) + math.cos(lat1 * deg_rad) * math.cos(lat2 * deg_rad) * math.cos(
+        (lon2 - lon1) * deg_rad
     )
-    return distance
+    return 6.370e6 * math.acos(max(-1.0, min(1.0, dot_product)))
+
+
+# 1 degree of latitude is approximately 111 km. The latitude window
+# is a fast pre-filter to avoid calling get_distance on every row.
+_LOCATION_QUERY = (
+    "SELECT *, CAST(DistanceBetween(?, ?, Latitude, Longitude) AS INTEGER)"
+    " AS Distance "
+    "FROM Airports "
+    "WHERE Latitude > ? - 1 AND Latitude < ? + 1{iata_filter} "
+    "ORDER BY Distance ASC LIMIT {limit}"
+)
 
 
 def get_closest_airports(
     latitude: float, longitude: float, iata_only: bool = False
 ) -> list[dict]:
+    iata_filter = " AND LENGTH(IATA)=3" if iata_only else ""
+    limit = 5 if iata_only else 15
+    query = _LOCATION_QUERY.format(iata_filter=iata_filter, limit=limit)
     with sqlite3.connect(URI, uri=True) as connection:
         connection.create_function("DistanceBetween", 4, get_distance)
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
-        # 1deg latitude is approximately 111km.
-        location_query = (
-            "SELECT *, CAST(DistanceBetween({0:f}, {1:f}, Latitude, Longitude)"
-            " AS INTEGER) AS Distance "
-            "FROM Airports WHERE Latitude > {0:f} - 1 AND "
-            "Latitude < {0:f} + 1 "
-            "ORDER BY Distance "
-            "ASC LIMIT 15"
-        )
-        # limit results to airports with IATA designator
-        location_query_iata_only = (
-            "SELECT *, CAST(DistanceBetween({0:f}, {1:f}, Latitude, Longitude)"
-            " AS INTEGER) AS Distance "
-            "FROM Airports WHERE Latitude > {0:f} - 1 AND "
-            "Latitude < {0:f} + 1 AND LENGTH(IATA)=3 "
-            "ORDER BY DistanceBetween({0:f}, {1:f}, Latitude, Longitude) "
-            "ASC LIMIT 5"
-        )
-        if iata_only:
-            cursor.execute(location_query_iata_only.format(latitude, longitude))
-        else:
-            cursor.execute(location_query.format(latitude, longitude))
+        cursor.execute(query, (latitude, longitude, latitude, latitude))
         results = cursor.fetchall()
         cursor.close()
     return [dict(_row) for _row in results]
@@ -56,13 +50,16 @@ def get_closest_airports(
 
 def get_closest_airport(
     latitude: float, longitude: float, iata_only: bool = False
-) -> dict:
-    return get_closest_airports(latitude, longitude, iata_only)[0]
+) -> dict | None:
+    results = get_closest_airports(latitude, longitude, iata_only)
+    return results[0] if results else None
 
 
 def get_airport_info(icao: str) -> dict | None:
-    assert icao is not None
-    assert len(icao) == 4
+    if icao is None or len(icao) != 4:
+        raise ValueError(
+            f"ICAO code must be a 4-character string, got: {icao!r}"
+        )
     with sqlite3.connect(URI, uri=True) as connection:
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
@@ -90,15 +87,17 @@ def get_airport_iata(icao: str) -> str | None:
 
 
 def get_airport_icao(iata: str) -> str | None:
-    assert iata is not None
-    assert len(iata) == 3
+    if iata is None or len(iata) != 3:
+        raise ValueError(
+            f"IATA code must be a 3-character string, got: {iata!r}"
+        )
     with sqlite3.connect(URI, uri=True) as connection:
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
-        cursor.execute("SELECT ICAO from Airports WHERE IATA=?", (iata,))
+        cursor.execute("SELECT ICAO FROM Airports WHERE IATA=?", (iata,))
         result = cursor.fetchone()
         cursor.close()
     if result is None:
-        logging.warning(f"{iata} is unknown to database and may be a station.")
+        logger.warning(f"{iata} is unknown to database and may be a station.")
         return None
     return result["ICAO"]
