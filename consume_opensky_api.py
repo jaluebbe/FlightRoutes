@@ -6,7 +6,7 @@ import redis
 import requests
 import logging
 
-from opensky_api import OpenSkyApi
+from opensky_api import OpenSkyApi, TokenManager
 from opensky_utils import validated_position, update_icao24s_from_redis
 
 from config import *
@@ -25,7 +25,9 @@ class OpenSkyApiConsumer:
         self._initialize_connection()
 
     def _initialize_connection(self):
-        self.api = OpenSkyApi(OPENSKY_USER, OPENSKY_PASSWORD)
+        self.api = OpenSkyApi(
+            token_manager=TokenManager.from_json_file("credentials.json")
+        )
 
     def worker(self, interval=45):
         while True:

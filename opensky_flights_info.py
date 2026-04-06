@@ -6,9 +6,8 @@ import requests
 import redis
 import pymongo
 
+from opensky_api import TokenManager
 from opensky_utils import validated_callsign
-
-from config import OPENSKY_USER, OPENSKY_PASSWORD
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,6 +22,7 @@ class OpenSkyFlights:
         if "callsign_1" not in self.mycol.index_information():
             self.mycol.create_index("callsign")
         self.redis_connection = redis.Redis(decode_responses=True)
+        self._token_manager = TokenManager.from_json_file("credentials.json")
 
     def get_routes_by_callsign(self, callsign):
         routes = {
@@ -70,19 +70,20 @@ class OpenSkyFlights:
             )
 
     def update_data(self):
-        session = requests.Session()
-        session.auth = (OPENSKY_USER, OPENSKY_PASSWORD)
+        _headers = self._token_manager.auth_headers()
         _utc = arrow.utcnow()
         _begin = _utc.shift(days=-2).floor("day").timestamp()
         _end = _utc.shift(days=-1).ceil("day").timestamp()
         _params = {"begin": int(_begin), "end": int(_end)}
-        for _key in self.redis_connection.scan_iter("aircraft_icao24s:*"):
-            for _icao24 in self.redis_connection.smembers(_key):
-                _params["icao24"] = _icao24
-                _response = session.get(URL, params=_params)
-                if _response.status_code != 200:
-                    continue
-                self._process_flights(_response.json())
+        with requests.Session() as session:
+            session.headers.update(_headers)
+            for _key in self.redis_connection.scan_iter("aircraft_icao24s:*"):
+                for _icao24 in self.redis_connection.smembers(_key):
+                    _params["icao24"] = _icao24
+                    _response = session.get(URL, params=_params)
+                    if _response.status_code != 200:
+                        continue
+                    self._process_flights(_response.json())
 
     def get_flights_of_day(self, date=None):
         if date is None:
