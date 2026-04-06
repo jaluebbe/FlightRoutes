@@ -34,7 +34,9 @@ def main() -> None:
             # ICAO are included, as the data is used for airline flight
             # matching only.
             icao24_to_registration = {
-                _row["icao24"]: "".join(_row["registration"].split("-"))
+                _row["icao24"]: _row["registration"]
+                .replace("-", "")
+                .replace(".", "")
                 for _row in _reader
                 if _row["operatorIcao"] != "" and _row["registration"] != ""
             }
