@@ -49,7 +49,6 @@ avinor_airports_iata = (
     "SVG",
     "SVJ",
     "TOS",
-    "TOS",
     "TRD",
     "TRF",
     "VAW",
@@ -62,7 +61,18 @@ logger = logging.getLogger(pathlib.Path(__file__).name)
 
 
 def _get_date_and_time(flight):
-    _timestamp = arrow.get(flight["schedule_time"])
+    if "schedule_time" in flight:
+        _timestamp = arrow.get(flight["schedule_time"])
+    elif "status" in flight and "@time" in flight["status"]:
+        # schedule_time occasionally absent for old departed flights;
+        # fall back to status time for date derivation.
+        logger.debug(
+            f"schedule_time missing for {flight.get('flight_id')}; "
+            f"using status time as fallback"
+        )
+        _timestamp = arrow.get(flight["status"]["@time"])
+    else:
+        return None, None
     _date = _timestamp.format("YYYY-MM-DD")
     if "status" in flight and "@time" in flight["status"]:
         _timestamp = arrow.get(flight["status"]["@time"])
@@ -81,14 +91,18 @@ _status_codes = {
 def request_airport_data(airport_iata):
     airport_icao = get_airport_icao(airport_iata)
     params = {"airport": airport_iata, "TimeTo": 36, "TimeFrom": 36}
-    response = requests.request("GET", URL, params=params, timeout=10)
-    data = xmltodict.parse(response.text)
-    flight_list = data["airport"]["flights"].get("flight")
-    logger.debug(f"{airport_iata}: {len(flight_list)} flights")
+    response = requests.get(URL, params=params, timeout=10)
+    # force_list ensures a single flight is still returned as a list,
+    # not a dict, which would cause xmltodict to iterate over key names.
+    data = xmltodict.parse(response.text, force_list={"flight": True})
+    _flights_el = data["airport"].get("flights")
+    flight_list = (
+        _flights_el.get("flight") if isinstance(_flights_el, dict) else None
+    )
     if flight_list is None:
+        logger.debug(f"{airport_iata}: no flights")
         return
-    # flight_list represents the unmodified output of the API data which has
-    # been converted from XML to dict.
+    logger.debug(f"{airport_iata}: {len(flight_list)} flights")
     for flight in flight_list:
         if not isinstance(flight, dict):
             continue
@@ -117,6 +131,8 @@ def request_airport_data(airport_iata):
             operator_icao = "NOS"
         elif operator_iata == "C3":
             operator_icao = "TDR"
+        elif operator_iata == "4Y":
+            operator_icao = "BGA"
         elif operator_icao == "WGH":
             continue
         if None in (operator_icao, operator_iata):
@@ -136,14 +152,13 @@ def request_airport_data(airport_iata):
         stopovers_icao = []
         if stopovers_iata is not None:
             for stopover_iata in stopovers_iata.split(","):
-                stopover_icao = get_airport_icao(stopover_iata)
+                stopover_icao = get_airport_icao(stopover_iata.strip())
                 stopovers_icao.append(stopover_icao)
                 if stopover_icao is None:
                     logger.warning(
                         "missing airport icao for {}".format(stopover_iata)
                     )
         direction = flight["arr_dep"]
-        route_items = []
         if any(
             _icao is None
             for _icao in stopovers_icao + [other_airport_icao, airport_icao]
@@ -156,18 +171,24 @@ def request_airport_data(airport_iata):
         }
         if "status" in flight:
             response["status"] = _status_codes[flight["status"]["@code"]]
+        route_items = []
         if direction == "A":
             route_items = [other_airport_icao] + stopovers_icao + [airport_icao]
             _date, _arrival = _get_date_and_time(flight)
+            if _date is None:
+                continue
             response["arrival"] = _arrival
         elif direction == "D":
             route_items = [airport_icao] + stopovers_icao + [other_airport_icao]
             _date, _departure = _get_date_and_time(flight)
+            if _date is None:
+                continue
             response["departure"] = _departure
-        _route = "-".join(route_items)
-        response["route"] = _route
+        else:
+            continue
+        response["route"] = "-".join(route_items)
         response["_id"] = "{}_{}_{}_{}".format(
-            operator_iata, flight_number, _date, _route
+            operator_iata, flight_number, _date, response["route"]
         )
         yield response
 
@@ -179,6 +200,7 @@ class Airport(flight_data_source.FlightDataSource):
     def update_data(self):
         all_flights = {}
         for _airport_iata in avinor_airports_iata:
+            logger.debug(f"fetching {_airport_iata}")
             for _flight in request_airport_data(_airport_iata):
                 _key = _flight["_id"].replace(_flight["route"], "")
                 all_flights.setdefault(_key, {})
@@ -199,5 +221,6 @@ class Airport(flight_data_source.FlightDataSource):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     airport = Airport()
     airport.update_data()
