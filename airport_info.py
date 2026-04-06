@@ -2,6 +2,7 @@ import pathlib
 import math
 import logging
 import sqlite3
+from functools import lru_cache
 
 PWD = pathlib.Path(__file__).resolve().parent
 URI = f"file:{PWD}/airports.sqb?mode=ro"
@@ -55,19 +56,49 @@ def get_closest_airport(
     return results[0] if results else None
 
 
+@lru_cache(maxsize=8192)
+def _query_airport_by_icao(icao: str) -> tuple | None:
+    with sqlite3.connect(URI, uri=True) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT Name, City, Country, IATA, ICAO, Latitude, Longitude, "
+            "Altitude, Timezone FROM Airports WHERE ICAO=?",
+            (icao,),
+        )
+        result = cursor.fetchone()
+        cursor.close()
+    return result
+
+
+@lru_cache(maxsize=8192)
+def _query_icao_by_iata(iata: str) -> str | None:
+    with sqlite3.connect(URI, uri=True) as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT ICAO FROM Airports WHERE IATA=?", (iata,))
+        result = cursor.fetchone()
+        cursor.close()
+    return result[0] if result else None
+
+
 def get_airport_info(icao: str) -> dict | None:
     if icao is None or len(icao) != 4:
         raise ValueError(
             f"ICAO code must be a 4-character string, got: {icao!r}"
         )
-    with sqlite3.connect(URI, uri=True) as connection:
-        connection.row_factory = sqlite3.Row
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM Airports WHERE ICAO=?", (icao,))
-        result = cursor.fetchone()
-        cursor.close()
+    result = _query_airport_by_icao(icao)
     if result is not None:
-        airport = dict(result)
+        keys = (
+            "Name",
+            "City",
+            "Country",
+            "IATA",
+            "ICAO",
+            "Latitude",
+            "Longitude",
+            "Altitude",
+            "Timezone",
+        )
+        airport = dict(zip(keys, result))
         airport["Latitude"] = float(airport["Latitude"])
         airport["Longitude"] = float(airport["Longitude"])
         return airport
@@ -91,13 +122,7 @@ def get_airport_icao(iata: str) -> str | None:
         raise ValueError(
             f"IATA code must be a 3-character string, got: {iata!r}"
         )
-    with sqlite3.connect(URI, uri=True) as connection:
-        connection.row_factory = sqlite3.Row
-        cursor = connection.cursor()
-        cursor.execute("SELECT ICAO FROM Airports WHERE IATA=?", (iata,))
-        result = cursor.fetchone()
-        cursor.close()
+    result = _query_icao_by_iata(iata)
     if result is None:
         logger.warning(f"{iata} is unknown to database and may be a station.")
-        return None
-    return result["ICAO"]
+    return result
