@@ -30,7 +30,7 @@ def _filter_candidates(candidates, route):
     return [
         _callsign
         for _callsign in candidates
-        vsd.get_flight_route(_callsign) == route
+        if vsd.get_flight_route(_callsign) == route
     ]
 
 
