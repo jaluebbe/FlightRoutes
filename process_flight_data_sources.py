@@ -9,6 +9,8 @@ import ham_data
 import avinor_data
 import lh_cargo_data
 import anac_data
+import sia_cargo_data
+from airline_info import get_airline_icaos
 from route_utils import route_check_simple, estimate_progress
 from route_info import (
     set_checked_flightroute,
@@ -16,12 +18,10 @@ from route_info import (
     increase_error_count,
 )
 import flight_data_source
-from opensky_flights_info import OpenSkyFlights
 import vrs_standing_data as vsd
 
 logging.basicConfig(level=logging.INFO)
 redis_connection = redis.Redis(decode_responses=True)
-osf = OpenSkyFlights()
 
 
 def _filter_candidates(candidates, route):
@@ -30,19 +30,28 @@ def _filter_candidates(candidates, route):
     return [
         _callsign
         for _callsign in candidates
-        if osf.get_routes_by_callsign(_callsign) == route
-        or vsd.get_flight_route(_callsign) == route
+        vsd.get_flight_route(_callsign) == route
     ]
 
 
 def process_data_source(
-    data_source: flight_data_source.FlightDataSource
+    data_source: flight_data_source.FlightDataSource,
 ) -> None:
     for _flight in data_source.get_active_flights(utc):
         if _flight.get("status") == "cancelled":
             logging.debug("skipping cancelled flight: {_flight}")
             continue
         _airline_icao = _flight.get("airline_icao")
+        if _airline_icao is None:
+            _airline_iata = _flight.get("airline_iata")
+            if _airline_iata is not None:
+                _icaos = get_airline_icaos(_airline_iata)
+                if _icaos and len(_icaos) == 1:
+                    _airline_icao = _icaos[0]
+                    logging.debug(
+                        f"resolved missing airline_icao for {_airline_iata} "
+                        f"via DB lookup: {_airline_icao}"
+                    )
         if _airline_icao is None:
             logging.warning(f"airline_icao is missing: {_flight}")
             continue
@@ -179,6 +188,7 @@ if __name__ == "__main__":
         avinor_data.Airport(),
         lh_cargo_data.Airline(),
         anac_data.Agency(),
+        sia_cargo_data.Airline(),
     ]
 
     supported_airlines = set()

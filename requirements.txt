@@ -7,4 +7,5 @@ xmltodict
 numpy
 PyGeodesy
 free-proxy
+openpyxl
 git+https://github.com/openskynetwork/opensky-api.git#subdirectory=python
