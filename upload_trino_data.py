@@ -86,7 +86,7 @@ def process_airline(
         start_date, end_date, callsign=f"{operator}_%"
     )
     if flightlist is None or flightlist.empty:
-        return pd.DataFrame(), 0
+        return pd.DataFrame(), 0, 0
 
     for _col in ("departure", "arrival", "callsign"):
         flightlist[_col] = flightlist[_col].astype(object)
@@ -95,7 +95,7 @@ def process_airline(
 
     _vrs_routes = split_routes(get_airline_routes(operator))
     if not _vrs_routes:
-        return pd.DataFrame(), 0
+        return pd.DataFrame(), 0, 0
 
     _airport_set = {
         _airport for _route in _vrs_routes for _airport in _route.split("-")
@@ -112,6 +112,7 @@ def process_airline(
 
     flightlist = flightlist[flightlist["route"].isin(_vrs_routes)]
 
+    _qualified = len(flightlist)
     _stored = 0
     for _index, _row in flightlist.iterrows():
         _result = set_route(
@@ -120,7 +121,7 @@ def process_airline(
         if _result is not None:
             _stored += 1
 
-    return flightlist, _stored
+    return flightlist, _qualified, _stored
 
 
 def main() -> None:
@@ -165,18 +166,21 @@ def main() -> None:
         _json = PWD / "recurring_callsigns.json"
         _airlines = _top_airlines_from_recurring(_json, n=args.top)
 
+    _total_qualified = 0
     _total_stored = 0
     trino = Trino()
     for _airline in _airlines:
         try:
-            _, _stored = process_airline(
+            _, _qualified, _stored = process_airline(
                 trino, _airline, _start_date, _end_date
             )
+            _total_qualified += _qualified
             _total_stored += _stored
         except Exception:
             logger.exception(f"{_airline}: unhandled error, continuing")
     logger.warning(
-        f"Done: stored {_total_stored} routes for {len(_airlines)} airlines "
+        f"Done: {len(_airlines)} airlines — "
+        f"{_total_qualified} qualified, {_total_stored} stored "
         f"({_start_date} to {_end_date})"
     )
 
