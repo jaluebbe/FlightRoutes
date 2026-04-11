@@ -11,6 +11,13 @@ from vrs_standing_data import get_airline_routes
 
 logger = logging.getLogger(__name__)
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 _API_URL = os.getenv("ROUTES_API_URL")
 _API_KEY = os.getenv("ROUTES_API_KEY", "")
 
@@ -98,15 +105,15 @@ def set_route(
         return None
 
 
-def set_routes_bulk(routes: list[dict]) -> tuple[int, int]:
+def set_routes_bulk(routes: list[dict]) -> tuple[int, int, int, int]:
     """Write a list of pre-validated route dicts via the bulk API endpoint.
 
     Each dict must have keys: _airport_codes_iata, airport_codes,
     callsign, plausible.
-    Returns (stored, rejected) counts.
+    Returns (stored_new, stored_updated, stored_unchanged, rejected) counts.
     """
     if not routes:
-        return 0, 0
+        return 0, 0, 0, 0
     try:
         _response = requests.post(
             f"{_API_URL}/api/set_routes",
@@ -116,11 +123,15 @@ def set_routes_bulk(routes: list[dict]) -> tuple[int, int]:
         )
         _response.raise_for_status()
         _result = _response.json()
-        _stored = _result["stored_new"] + _result["stored_updated"]
-        return _stored, _result["rejected"]
+        return (
+            _result["stored_new"],
+            _result["stored_updated"],
+            _result["stored_unchanged"],
+            _result["rejected"],
+        )
     except requests.RequestException:
         logger.exception("Bulk API error")
-        return 0, len(routes)
+        return 0, 0, 0, len(routes)
 
 
 def get_known_callsigns() -> list[str]:

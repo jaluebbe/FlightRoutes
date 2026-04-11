@@ -6,47 +6,12 @@ import pathlib
 import arrow
 import pandas as pd
 from pyopensky.trino import Trino
-from upload_utils import set_routes_bulk, _build_route_data
+from upload_utils import _build_route_data, set_routes_bulk
 from vrs_standing_data import get_airline_routes
 
 PWD = pathlib.Path(__file__).resolve().parent
 
 logger = logging.getLogger(__name__)
-
-
-def _bulk_set_routes(
-    routes: list[dict],
-) -> tuple[int, int, int, int]:
-    """Call set_routes_bulk and return (new, updated, unchanged, rejected).
-
-    set_routes_bulk returns (stored, rejected) where stored = new + updated.
-    For the full breakdown we call the API directly here.
-    """
-    import os
-    import requests
-
-    _api_url = os.getenv("ROUTES_API_URL")
-    _api_key = os.getenv("ROUTES_API_KEY", "")
-    if not _api_url:
-        return 0, 0, 0, len(routes)
-    try:
-        _response = requests.post(
-            f"{_api_url}/api/set_routes",
-            json=routes,
-            headers={"api_key": _api_key},
-            timeout=30,
-        )
-        _response.raise_for_status()
-        _r = _response.json()
-        return (
-            _r["stored_new"],
-            _r["stored_updated"],
-            _r["stored_unchanged"],
-            _r["rejected"],
-        )
-    except requests.RequestException:
-        logger.exception("Bulk API error")
-        return 0, 0, 0, len(routes)
 
 
 def _top_airlines_from_recurring(
@@ -160,9 +125,7 @@ def process_airline(
 
     _new, _updated, _unchanged, _rejected = (0, 0, 0, 0)
     if _routes:
-        # set_routes_bulk returns (stored, rejected); stored = new + updated
-        # For the detailed breakdown we need the bulk endpoint response.
-        _new, _updated, _unchanged, _rejected = _bulk_set_routes(_routes)
+        _new, _updated, _unchanged, _rejected = set_routes_bulk(_routes)
 
     return flightlist, _qualified, _new, _updated, _unchanged, _rejected
 
