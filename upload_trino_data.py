@@ -21,9 +21,13 @@ def _top_airlines_from_recurring(
     derived from recurring_callsigns.json."""
     with open(json_path, encoding="utf-8") as _f:
         _data = json.load(_f)
-    _df = pd.DataFrame(_data["recurring_callsigns"], columns=["callsign"])
-    _df["airline"] = _df["callsign"].str[:3]
-    return list(_df["airline"].value_counts().head(n).index)
+    return (
+        pd.Series(_data["recurring_callsigns"])
+        .str[:3]
+        .value_counts()
+        .head(n)
+        .index.tolist()
+    )
 
 
 def filter_callsigns(flightlist: pd.DataFrame) -> pd.DataFrame:
@@ -51,13 +55,12 @@ def filter_airports(
     flightlist: pd.DataFrame, valid_airports: set[str]
 ) -> pd.DataFrame:
     _icao_pattern = r"^[A-Z]{2}[0-9A-Z]{2}$"
+    flightlist = flightlist.dropna(subset=["departure", "arrival"])
+    if flightlist.empty:
+        return flightlist
     flightlist = flightlist[
         flightlist["departure"].isin(valid_airports)
         & flightlist["arrival"].isin(valid_airports)
-    ]
-    flightlist = flightlist[
-        flightlist["departure"].str.match(_icao_pattern)
-        & flightlist["arrival"].str.match(_icao_pattern)
         & (flightlist["departure"] != flightlist["arrival"])
     ]
     return flightlist
@@ -65,8 +68,6 @@ def filter_airports(
 
 def split_route(route: str) -> list[str]:
     _airports = route.split("-")
-    if len(_airports) <= 2:
-        return [route]
     return [
         f"{_airports[i]}-{_airports[i + 1]}" for i in range(len(_airports) - 1)
     ]
@@ -86,6 +87,9 @@ def process_airline(
     )
     if flightlist is None or flightlist.empty:
         return pd.DataFrame(), 0
+
+    for _col in ("departure", "arrival", "callsign"):
+        flightlist[_col] = flightlist[_col].astype(object)
 
     flightlist = filter_callsigns(flightlist)
 
