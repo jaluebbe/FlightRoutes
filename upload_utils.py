@@ -1,19 +1,51 @@
 import itertools
-import json
 import logging
 import os
-import re
 
 import pandas as pd
-import redis
 import requests
 
 from opensky_utils import validated_callsign
 from route_utils import check_route_airports, convert_to_iata_route
 from vrs_standing_data import get_airline_routes
 
-redis_host = os.getenv("REDIS_HOST", "127.0.0.1")
-redis_connection = redis.Redis(host=redis_host, decode_responses=True)
+logger = logging.getLogger(__name__)
+
+_API_URL = os.getenv("ROUTES_API_URL")
+_API_KEY = os.getenv("ROUTES_API_KEY", "")
+
+if not _API_URL:
+    raise RuntimeError(
+        "ROUTES_API_URL is not set. "
+        "Add it to your .env file: ROUTES_API_URL=https://my-api.example.com"
+    )
+
+_HEADERS = {"api_key": _API_KEY}
+
+
+def _build_route_data(
+    callsign: str, route: str, plausible: bool
+) -> dict | None:
+    """Validate callsign and route, build the route data dict.
+
+    Returns None if validation fails.
+    """
+    callsign_info = validated_callsign(callsign.upper())
+    if callsign_info is None:
+        logger.debug(f"{callsign} did not pass callsign check.")
+        return None
+    callsign = callsign_info["callsign"]
+    route = route.upper()
+    if check_route_airports(route, None) is None:
+        logger.debug(f"{callsign}: {route} did not pass route check.")
+        return None
+    _iata_route = convert_to_iata_route(route)
+    return {
+        "_airport_codes_iata": _iata_route,
+        "airport_codes": route,
+        "callsign": callsign,
+        "plausible": int(plausible),
+    }
 
 
 def set_route(
@@ -21,57 +53,107 @@ def set_route(
     route: str,
     plausible: bool = False,
     check_airports: bool = True,
-):
-    callsign_info = validated_callsign(callsign.upper())
-    if callsign_info is None:
-        print(f"{callsign} did not pass callsign check.")
-        return
-    callsign = callsign_info["callsign"]
-    operator = callsign_info["operator_icao"]
-    route = route.upper()
+) -> dict | None:
+    """Set a single callsign-route mapping via the API.
+
+    Validates the callsign and route locally before writing.
+    Returns the route data dict if stored, None if rejected or invalid.
+    """
     if check_airports:
+        callsign_info = validated_callsign(callsign.upper())
+        if callsign_info is None:
+            logger.debug(f"{callsign} did not pass callsign check.")
+            return None
+        operator = callsign_info["operator_icao"]
+        route_upper = route.upper()
         airline_routes = get_airline_routes(operator)
         airline_airports = list(
             {
                 airport
-                for route in airline_routes
-                for airport in route.split("-")
+                for _route in airline_routes
+                for airport in _route.split("-")
             }
         )
-    else:
-        airline_airports = None
-    if check_route_airports(route, airline_airports) is None:
-        print(f"{callsign}: {route} did not pass route check.")
-        return
-    _key = f"route:{callsign}"
-    if not plausible:
-        _existing_entry = redis_connection.get(_key)
-        if (
-            _existing_entry is not None
-            and json.loads(_existing_entry)["plausible"]
-        ):
-            return
-    _iata_route = convert_to_iata_route(route)
-    _data = {
-        "_airport_codes_iata": _iata_route,
-        "airport_codes": route,
-        "callsign": callsign,
-        "plausible": int(plausible),
-    }
-    redis_connection.set(_key, json.dumps(_data))
-    return _data
+        if check_route_airports(route_upper, airline_airports) is None:
+            logger.debug(f"{callsign}: {route} did not pass route check.")
+            return None
+
+    _data = _build_route_data(callsign, route, plausible)
+    if _data is None:
+        return None
+
+    try:
+        _response = requests.post(
+            f"{_API_URL}/api/set_route",
+            json=_data,
+            headers=_HEADERS,
+            timeout=10,
+        )
+        _response.raise_for_status()
+        _result = _response.json()
+        _status = _result.get("status")
+        return _data if _status in ("stored_new", "stored_updated") else None
+    except requests.RequestException:
+        logger.exception(f"API error for {callsign}")
+        return None
+
+
+def set_routes_bulk(routes: list[dict]) -> tuple[int, int]:
+    """Write a list of pre-validated route dicts via the bulk API endpoint.
+
+    Each dict must have keys: _airport_codes_iata, airport_codes,
+    callsign, plausible.
+    Returns (stored, rejected) counts.
+    """
+    if not routes:
+        return 0, 0
+    try:
+        _response = requests.post(
+            f"{_API_URL}/api/set_routes",
+            json=routes,
+            headers=_HEADERS,
+            timeout=30,
+        )
+        _response.raise_for_status()
+        _result = _response.json()
+        _stored = _result["stored_new"] + _result["stored_updated"]
+        return _stored, _result["rejected"]
+    except requests.RequestException:
+        logger.exception("Bulk API error")
+        return 0, len(routes)
 
 
 def get_known_callsigns() -> list[str]:
-    """Return all callsigns known to the Redis DB."""
-    return [key.split(":")[1] for key in redis_connection.scan_iter("route:*")]
+    """Return all callsigns known to the database."""
+    try:
+        _response = requests.get(
+            f"{_API_URL}/api/all_callsigns",
+            headers=_HEADERS,
+            timeout=30,
+        )
+        _response.raise_for_status()
+        return _response.json()
+    except requests.RequestException:
+        logger.exception("API error fetching all callsigns")
+        return []
 
 
 def get_route(callsign: str) -> dict | None:
     """Return the known route data for a given callsign. May return None."""
-    data = redis_connection.get(f"route:{callsign}")
-    if data is not None:
-        return json.loads(data)
+    try:
+        _response = requests.get(
+            f"{_API_URL}/api/route/{callsign}",
+            headers=_HEADERS,
+            timeout=10,
+        )
+        _response.raise_for_status()
+        _data = _response.json()
+        if _data.get("airport_codes") == "unknown":
+            return None
+        return _data
+    except requests.RequestException:
+        logger.exception(f"API error fetching route for {callsign}")
+        return None
 
 
 def routes_vary(grouped_routes: pd.DataFrame) -> bool:
@@ -97,9 +179,9 @@ def check_route_change(grouped_routes: pd.DataFrame) -> pd.DataFrame:
 
 
 def analyse_route_times(df_callsign: pd.DataFrame) -> pd.DataFrame:
-    """Analyse routes belonging to the same callsign ordered by departure time.
-    Routes are combined if their destination/origin match and the stopover
-    time is not too long."""
+    """Analyse routes belonging to the same callsign ordered by departure
+    time. Routes are combined if their destination/origin match and the
+    stopover time is not too long."""
     df_callsign["next_origin"] = df_callsign["origin"].shift(-1)
     df_callsign["next_destination"] = df_callsign["destination"].shift(-1)
     df_callsign["next_departure"] = df_callsign["departure"].shift(-1)
@@ -131,7 +213,7 @@ def analyse_route_times(df_callsign: pd.DataFrame) -> pd.DataFrame:
         return df_routes
     new_route = check_route_change(df_routes)
     if not new_route.empty:
-        logging.debug(
+        logger.debug(
             f"Route change detected in analyse_route_times: {new_route}"
         )
         return new_route
@@ -139,23 +221,16 @@ def analyse_route_times(df_callsign: pd.DataFrame) -> pd.DataFrame:
 
 
 def combine_all_routes(routes: list[str]) -> str:
-    """
-    Combines a list of routes into a single route.
-    """
+    """Combines a list of routes into a single route."""
     if len(routes) < 2:
         raise ValueError("The function expects at least two routes to combine.")
-    # Check all possible permutations of the routes
     for perm in itertools.permutations(routes):
         combined_route = perm[0].split("-")
         valid_combination = True
         for i in range(1, len(perm)):
             segments = perm[i].split("-")
-            # Check if the last two segments of the combined route match the
-            # first two segments of the current route
             if combined_route[-2:] == segments[:2]:
                 combined_route += segments[2:]
-            # Check if the last two segments of the current route match the
-            # first two segments of the combined route
             elif segments[-2:] == combined_route[:2]:
                 combined_route = segments + combined_route[2:]
             else:
@@ -166,28 +241,24 @@ def combine_all_routes(routes: list[str]) -> str:
 
 
 def merge_routes(df_routes: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merges a dataframe of routes for a callsign into a single route.
-    """
+    """Merges a dataframe of routes for a callsign into a single route."""
     grouped_routes = (
         df_routes.groupby("callsign")
         .agg(route=("route", lambda x: combine_all_routes(x.tolist())))
         .reset_index()
     )
-    grouped_routes = grouped_routes.dropna(subset=["route"])
-    return grouped_routes
+    return grouped_routes.dropna(subset=["route"])
 
 
 def filter_callsigns(flightlist: pd.DataFrame) -> pd.DataFrame:
-    """
-    Filter a dataframe to exclude callsigns that do not represent scheduled
-    airline flights.
-    """
+    """Filter a dataframe to exclude callsigns that do not represent
+    scheduled airline flights."""
     callsign_components = (
         flightlist["callsign"]
         .str.rstrip()
         .str.extract(
-            r"^(?P<operator>[A-Z]{3})0*(?P<suffix>[1-9][A-Z0-9]*)$", expand=True
+            r"^(?P<operator>[A-Z]{3})0*(?P<suffix>[1-9][A-Z0-9]*)$",
+            expand=True,
         )
     )
     flightlist["callsign"] = (
@@ -212,7 +283,6 @@ def process_callsign(df_callsign: pd.DataFrame) -> None | dict:
         df_callsign["origin"] != df_callsign["destination"]
     ].copy()
     if df_callsign.empty:
-        # No recent callsign history except for roundtrips.
         return
     df_callsign["route"] = (
         df_callsign["origin"] + "-" + df_callsign["destination"]
