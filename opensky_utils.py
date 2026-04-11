@@ -1,11 +1,46 @@
+import calendar
 import re
 import json
 import logging
 import pathlib
+from datetime import date, datetime, timedelta, timezone
 import redis
 import requests
 
 PWD = pathlib.Path(__file__).resolve().parent
+
+
+def _last_sunday(year: int, month: int) -> date:
+    """Return the date of the last Sunday in the given month."""
+    _last_day = calendar.monthrange(year, month)[1]
+    _d = date(year, month, _last_day)
+    # weekday(): Monday=0 ... Sunday=6
+    _days_since_sunday = (_d.weekday() + 1) % 7
+    return _d - timedelta(days=_days_since_sunday)
+
+
+def iata_season(dt: datetime | date | None = None) -> str:
+    """Return the IATA season identifier for a given date.
+
+    IATA Summer starts on the last Sunday of March, Winter on the last
+    Sunday of October. Returns a string like '2026S' or '2025W'.
+    Defaults to the current UTC date if no argument is given.
+    """
+    if dt is None:
+        _d = datetime.now(timezone.utc).date()
+    elif isinstance(dt, datetime):
+        _d = dt.date()
+    else:
+        _d = dt
+    _year = _d.year
+    _summer_start = _last_sunday(_year, 3)
+    _winter_start = _last_sunday(_year, 10)
+    if _d < _summer_start:
+        return f"{_year - 1}W"
+    if _d < _winter_start:
+        return f"{_year}S"
+    return f"{_year}W"
+
 
 redis_connection = redis.Redis(decode_responses=True)
 
