@@ -10,6 +10,8 @@ import avinor_data
 import lh_cargo_data
 import anac_data
 import sia_cargo_data
+import aa_cargo_data
+import united_cargo_data
 from airline_info import get_airline_icaos
 from route_utils import route_check_simple, estimate_progress
 from route_info import (
@@ -189,6 +191,8 @@ if __name__ == "__main__":
         lh_cargo_data.Airline(),
         anac_data.Agency(),
         sia_cargo_data.Airline(),
+        aa_cargo_data.Airline(),
+        united_cargo_data.Airline(),
     ]
 
     supported_airlines = set()
