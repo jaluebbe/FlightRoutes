@@ -28,6 +28,10 @@ def check_route_airports(route: str, valid_airports: list = None) -> str | None:
 def get_single_route_length(origin_icao, destination_icao):
     origin = get_airport_info(origin_icao)
     destination = get_airport_info(destination_icao)
+    if origin is None:
+        raise ValueError(f"unknown airport: {origin_icao}")
+    if destination is None:
+        raise ValueError(f"unknown airport: {destination_icao}")
     try:
         distance = ev.LatLon(
             origin["Latitude"], origin["Longitude"]

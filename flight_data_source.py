@@ -1,3 +1,4 @@
+import logging
 import pymongo
 import arrow
 from route_utils import estimate_max_flight_duration, get_route_length
@@ -6,7 +7,11 @@ from route_utils import estimate_max_flight_duration, get_route_length
 def _in_bounds(flight, utc):
     _departure = flight.get("departure")
     _arrival = flight.get("arrival")
-    _length = get_route_length(flight["route"])
+    _route = flight["route"]
+    try:
+        _length = get_route_length(_route)
+    except ValueError as e:
+        logging.error(f"Problem to obtain length for route: {_route}. {e}")
     if _departure is not None and _arrival is not None:
         return _departure < utc < _arrival
     elif _departure is not None:
