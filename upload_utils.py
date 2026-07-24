@@ -138,9 +138,7 @@ def get_known_callsigns() -> list[str]:
     """Return all callsigns known to the database."""
     try:
         _response = requests.get(
-            f"{_API_URL}/api/all_callsigns",
-            headers=_HEADERS,
-            timeout=30,
+            f"{_API_URL}/api/all_callsigns", headers=_HEADERS, timeout=30
         )
         _response.raise_for_status()
         return _response.json()
@@ -153,9 +151,7 @@ def get_route(callsign: str) -> dict | None:
     """Return the known route data for a given callsign. May return None."""
     try:
         _response = requests.get(
-            f"{_API_URL}/api/route/{callsign}",
-            headers=_HEADERS,
-            timeout=10,
+            f"{_API_URL}/api/route/{callsign}", headers=_HEADERS, timeout=10
         )
         _response.raise_for_status()
         _data = _response.json()
@@ -268,8 +264,7 @@ def filter_callsigns(flightlist: pd.DataFrame) -> pd.DataFrame:
         flightlist["callsign"]
         .str.rstrip()
         .str.extract(
-            r"^(?P<operator>[A-Z]{3})0*(?P<suffix>[1-9][A-Z0-9]*)$",
-            expand=True,
+            r"^(?P<operator>[A-Z]{3})0*(?P<suffix>[1-9][A-Z0-9]*)$", expand=True
         )
     )
     flightlist["callsign"] = (
@@ -287,14 +282,21 @@ def filter_callsigns(flightlist: pd.DataFrame) -> pd.DataFrame:
     return flightlist
 
 
-def process_callsign(df_callsign: pd.DataFrame) -> None | dict:
+def resolve_route_candidate(
+    df_callsign: pd.DataFrame,
+) -> tuple[dict, bool] | None:
+    """Determine the route candidate for a callsign DataFrame.
+
+    Returns (route_candidate, plausible) if a consistent route is found,
+    or None if the data is inconclusive. Does not write anything.
+    """
     if df_callsign.empty:
-        return
+        return None
     df_callsign = df_callsign[
         df_callsign["origin"] != df_callsign["destination"]
     ].copy()
     if df_callsign.empty:
-        return
+        return None
     df_callsign["route"] = (
         df_callsign["origin"] + "-" + df_callsign["destination"]
     )
@@ -319,19 +321,31 @@ def process_callsign(df_callsign: pd.DataFrame) -> None | dict:
             pass
         else:
             if routes_vary(grouped_callsign_routes):
-                return
+                return None
             if grouped_callsign_routes["count"].min() <= 1:
-                return
+                return None
             result = analyse_route_times(df_callsign)
             if result.empty:
-                return
+                return None
             elif result.shape[0] == 1:
                 pass
             elif result.shape[0] > 1 and result["count"].min() > 1:
                 result = merge_routes(result)
                 if result.empty:
-                    return
-    route_candidate = result[["callsign", "route"]].to_dict(orient="records")[0]
-    return set_route(
-        **route_candidate, plausible=plausible, check_airports=False
-    )
+                    return None
+    _candidate = result[["callsign", "route"]].to_dict(orient="records")[0]
+    return _candidate, plausible
+
+
+def process_callsign(df_callsign: pd.DataFrame) -> None | dict:
+    """Resolve a route candidate and write it immediately via the API.
+
+    Convenience wrapper around resolve_route_candidate + set_route.
+    For bulk uploads, use resolve_route_candidate directly and batch the
+    results with set_routes_bulk.
+    """
+    _result = resolve_route_candidate(df_callsign)
+    if _result is None:
+        return None
+    _candidate, _plausible = _result
+    return set_route(**_candidate, plausible=_plausible, check_airports=False)
