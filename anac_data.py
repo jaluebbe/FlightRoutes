@@ -100,6 +100,19 @@ class Agency(flight_data_source.FlightDataSource):
 
 
 if __name__ == "__main__":
+    import argparse
+
     logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser(
+        description="Read ANAC diario.csv and write records to MongoDB."
+    )
+    parser.add_argument(
+        "--days-ahead",
+        type=int,
+        default=1,
+        help="Day offset from current UTC date (0=today, 1=tomorrow)."
+    )
+    args = parser.parse_args()
     agency = Agency()
-    agency.update_data(arrow.utcnow().shift(days=1))
+    target_date = arrow.utcnow().shift(days=args.days_ahead)
+    agency.update_data(target_date)
