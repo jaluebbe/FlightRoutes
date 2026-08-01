@@ -2,6 +2,7 @@
 import time
 import json
 import logging
+import sqlite3
 import arrow
 import redis
 import fmo_data
@@ -220,8 +221,13 @@ if __name__ == "__main__":
                 arrow.get(utc).format("YYYY-MM-DD HH:mm:ss")
             )
         )
-        for _data_source in data_sources:
-            process_data_source(_data_source)
+        try:
+            for _data_source in data_sources:
+                process_data_source(_data_source)
+        except sqlite3.OperationalError as exc:
+            logging.warning(f"database busy ({exc}), skipping this cycle.")
+            time.sleep(5)
+            continue
         t_end = time.time()
         processing_time = t_end - t_start
         logging.info(f"processing time: {processing_time:.2f}s")
