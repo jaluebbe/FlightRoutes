@@ -10,6 +10,11 @@ import flight_data_source
 URL = "https://siros.anac.gov.br/siros/registros/diario/diario.csv"
 _day_labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 
+# ANAC still reports some retired ICAO codes; old -> current code.
+DEPRECATED_ICAO_CODES = {
+    "GVPR": "GVNP"  # Praia, Cape Verde -> Nelson Mandela Intl
+}
+
 logger = logging.getLogger(pathlib.Path(__file__).name)
 
 
@@ -57,6 +62,8 @@ class Agency(flight_data_source.FlightDataSource):
             _segment_number = int(_row["Nr. Etapa"])
             _origin = _row["Cód Origem"]
             _destination = _row["Cód Destino"]
+            _origin = DEPRECATED_ICAO_CODES.get(_origin, _origin)
+            _destination = DEPRECATED_ICAO_CODES.get(_destination, _destination)
             _date = _utc.format("YYYY-MM-DD")
             # Times are already UTC as stated in the file header.
             _departure = arrow.get(f"{_date}T{_row['Partida Prevista']}")
@@ -110,7 +117,7 @@ if __name__ == "__main__":
         "--days-ahead",
         type=int,
         default=1,
-        help="Day offset from current UTC date (0=today, 1=tomorrow)."
+        help="Day offset from current UTC date (0=today, 1=tomorrow).",
     )
     args = parser.parse_args()
     agency = Agency()
